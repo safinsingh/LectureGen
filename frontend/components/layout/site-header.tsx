@@ -7,6 +7,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 const navItems = [
   { href: "/#mission", label: "Mission" },
   { href: "/#how-it-works", label: "How It Works" },
+  { href: "/lectures", label: "Lectures" },
   { href: "/#sponsor-integrations", label: "Integrations" },
 ];
 
@@ -44,7 +45,10 @@ export function SiteHeader() {
           {!pathname.startsWith("/dashboard") && (
             <nav className="hidden items-center gap-6 text-sm font-medium text-slate-600 sm:flex">
               {navItems.map((item) => {
-                const isActive = pathname === "/" && item.href.startsWith("/#");
+                const isAnchor = item.href.includes("#");
+                const isActive = isAnchor
+                  ? pathname === "/" && item.href.startsWith("/#")
+                  : pathname === item.href || pathname.startsWith(`${item.href}/`);
                 return (
                   <Link
                     key={item.href}

@@ -4,8 +4,8 @@ import { useState } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { getBackendEndpoint } from "@/lib/env";
 
-// Types for folder structure
 interface Lecture {
   id: string;
   title: string;
@@ -21,7 +21,6 @@ interface Folder {
   isExpanded?: boolean;
 }
 
-// Mock data - replace with actual API calls
 const mockFolders: Folder[] = [
   {
     id: "1",
@@ -136,72 +135,59 @@ function FolderItem({
         )}
       </div>
 
-      {folder.lectures.length > 0 && (
+      {folder.isExpanded && (
         <div className="mt-6 space-y-3">
-          {folder.lectures
-            .slice(
-              0,
-              folder.isExpanded || !isRoot ? folder.lectures.length : 2,
-            )
-            .map((lecture) => (
-              <Link
-                key={lecture.id}
-                href={`/lectures/${lecture.id}`}
-                className="group/lecture flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3 transition hover:border-sky-300 hover:bg-white hover:shadow-sm"
+          {folder.lectures.map((lecture) => (
+            <Link
+              key={lecture.id}
+              href={`/lectures/${lecture.id}`}
+              className="group/lecture flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3 transition hover:border-sky-300 hover:bg-white hover:shadow-sm"
+            >
+              <svg
+                className="h-5 w-5 text-slate-400 transition group-hover/lecture:text-sky-500"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
               >
-                <svg
-                  className="h-5 w-5 text-slate-400 transition group-hover/lecture:text-sky-500"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+              <div className="flex-1">
+                <p className="font-medium text-slate-900">{lecture.title}</p>
+                <p className="text-xs text-slate-500">
+                  {new Date(lecture.createdAt).toLocaleDateString()}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-20 overflow-hidden rounded-full bg-white">
+                  <div
+                    className="h-full rounded-full bg-sky-500"
+                    style={{ width: `${lecture.progress}%` }}
                   />
-                </svg>
-                <div className="flex-1">
-                  <p className="font-medium text-slate-900">{lecture.title}</p>
-                  <p className="text-xs text-slate-500">
-                    {new Date(lecture.createdAt).toLocaleDateString()}
-                  </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-20 overflow-hidden rounded-full bg-white">
-                    <div
-                      className="h-full rounded-full bg-sky-500"
-                      style={{ width: `${lecture.progress}%` }}
-                    />
-                  </div>
-                  <span className="text-xs font-medium text-slate-600">
-                    {lecture.progress}%
-                  </span>
-                </div>
-              </Link>
-            ))}
-
-          {folder.isExpanded &&
-            folder.lectures.length > 2 &&
-            isRoot && (
-              <p className="text-xs font-medium text-slate-500">
-                Showing all lectures
-              </p>
-            )}
-        </div>
-      )}
-
-      {folder.isExpanded && folder.subfolders.length > 0 && (
-        <div className="mt-6 space-y-3">
-          {folder.subfolders.map((subfolder) => (
-            <FolderItem
-              key={subfolder.id}
-              folder={subfolder}
-              onToggle={onToggle}
-              depth={depth + 1}
-            />
+                <span className="text-xs font-medium text-slate-600">
+                  {lecture.progress}%
+                </span>
+              </div>
+            </Link>
           ))}
+
+          {folder.subfolders.length > 0 && (
+            <div className="space-y-3">
+              {folder.subfolders.map((subfolder) => (
+                <FolderItem
+                  key={subfolder.id}
+                  folder={subfolder}
+                  onToggle={onToggle}
+                  depth={depth + 1}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -213,11 +199,11 @@ export default function DashboardPage() {
   const router = useRouter();
   const [folders, setFolders] = useState<Folder[]>(mockFolders);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const displayName =
     user?.displayName?.split(" ")[0] ??
     (user?.email ? user.email.split("@")[0] : "there");
 
-  // Redirect if not logged in
   if (!loading && !user) {
     router.push("/login");
     return null;
@@ -251,30 +237,41 @@ export default function DashboardPage() {
 
   const handleCreateProject = async () => {
     setIsCreatingProject(true);
+    setCreateError(null);
+    let backendEndpoint: string | null = null;
     try {
-      // TODO: Replace with actual API endpoint
-      const response = await fetch("http://localhost:3001/api/create-project", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          // Add necessary payload
-        }),
-      });
+      backendEndpoint = getBackendEndpoint();
+    } catch (error) {
+      console.warn("Backend endpoint not configured; skipping project API.", error);
+    }
 
-      if (!response.ok) {
-        throw new Error("Failed to create project");
+    try {
+      if (backendEndpoint) {
+        const response = await fetch(`${backendEndpoint}create-project`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            // Add necessary payload
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to create project (${response.status})`);
+        }
+
+        const data = await response.json();
+        console.log("Project created:", data);
       }
-
-      const data = await response.json();
-      console.log("Project created:", data);
-      // TODO: Handle successful project creation (redirect, update state, etc.)
     } catch (error) {
       console.error("Error creating project:", error);
-      // TODO: Show error message to user
+      setCreateError(
+        "We couldn’t spin up your project. Please try again shortly.",
+      );
     } finally {
       setIsCreatingProject(false);
+      router.push("/lectures/new");
     }
   };
 
@@ -323,6 +320,9 @@ export default function DashboardPage() {
             )}
           </button>
         </div>
+        {createError ? (
+          <p className="mt-4 text-center text-sm text-red-600">{createError}</p>
+        ) : null}
 
         <section className="mt-14">
           <div className="text-center md:flex md:items-end md:justify-between md:text-left">
