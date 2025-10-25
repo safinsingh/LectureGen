@@ -282,13 +282,11 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-slate-50">
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 py-16">
         <header className="text-center">
-          <p className="text-sm font-medium uppercase tracking-wide text-slate-500">
-            Hi {displayName}
-          </p>
-          <h1 className="mt-4 text-4xl font-bold text-slate-900">
+          <h1 className="text-5xl font-bold text-slate-900">Hi {displayName}</h1>
+          <p className="mt-4 text-2xl font-semibold text-slate-900">
             Ready to build your next lecture?
-          </h1>
-          <p className="mt-3 text-base text-slate-600">
+          </p>
+          <p className="mt-4 text-base text-slate-600">
             Assemble immersive learning experiences with a personalized mix of
             walkthroughs, diagrams, and practice prompts.
           </p>
