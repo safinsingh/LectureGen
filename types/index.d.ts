@@ -6,9 +6,8 @@ type Diagram = string; // mermaid
 type Image = string; // URLencoded? src?
 type FirebaseStub = null; // firebase authentication
 type FileUpload = {
-  file_name: string;
-  file_type: "audio" | "image" | "diagram";
-  file_path: string;
+  name: string;
+  content: string;
 };
 
 /// DATA ///
