@@ -22,7 +22,7 @@ type LecturePreferences = {
 
 type LectureSlide = {
   transcript: string;
-  voiceover: Audio; // mp3 path? raw bytes?
+  voiceover: string; // download URL; refers to audio in firebase/storage
   title: string;
   content?: string; // narrow: bullet points?
   diagram?: Diagram;
@@ -32,10 +32,9 @@ type LectureSlide = {
 type PartialSlide = Omit<LectureSlide,"transcript" | "voiceover">
 
 type Lecture = {
-  lecture_id: Uuid;
   version: number; // race condition: account for case where user sends new request before prev finishes
   // share lecture -> ensure only registered users can access
-  permitted_users: User[]; // identify by: user.id; alternatively, Uuid[]
+  permitted_users: string[]; // identify by: user.id
   slides: LectureSlide[];
 };
 

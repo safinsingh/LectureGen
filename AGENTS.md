@@ -28,6 +28,9 @@ We let learners assemble their own lecture format by mixing content blocks (expl
 - `Fastify` HTTP server providing lecture creation and asset retrieval APIs.
 - LiveKit media infrastructure for low-latency audio capture, synthesis, and streaming.
 
+## Environment Variables
+- `BACKEND_ENDPOINT`: Base URL for Fastify APIs (e.g. `https://api.lecturegen.dev/api/`). Client code reads this value (or `NEXT_PUBLIC_BACKEND_ENDPOINT`) to avoid hardcoding localhost addresses.
+
 ### API Surface
 - `POST /api/newLecture { topic } → { id }` creates a lecture job and returns its identifier.
 - `WS /api/lecture?id={id}` streams progress updates (`transcript complete`, `slides complete`, `diagrams complete`, `voiceover complete`) as each asset becomes available. This is the same input used to interrupt and ask questions during the lecture.
