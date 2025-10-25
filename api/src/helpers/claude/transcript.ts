@@ -16,6 +16,7 @@ export type GenerateTranscriptRequest = {
   custom_preferences?: LecturePreferences;
 };
 
+// validates AI's response structure 
 export const ZGenerateTranscriptResponse = z.array(
   z.object({
     transcript: z.string(),
@@ -50,6 +51,7 @@ export const ZGenerateTranscriptResponse = z.array(
   })
 );
 
+// converts Q&A pairs into readable text format 
 const question_answer_to_text = (
   question: CreateLectureQuestion,
   answer: CreateLectureAnswer
@@ -164,10 +166,7 @@ Adjust your response according to the current lecture preferences:
         ? "Use a friendly, supportive, and encouraging tone, as if guiding a student patiently."
         : "Add light humor or playful analogies where appropriate, keeping the content accurate and engaging."
   }
-
 `;
 
-  const transcript = await llm.sendMessage(PROMPT, ZGenerateTranscriptResponse);
-
-  return transcript;
+  return llm.sendMessage(PROMPT, ZGenerateTranscriptResponse);
 }
