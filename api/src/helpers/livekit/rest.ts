@@ -1,3 +1,4 @@
+import { AccessToken } from 'livekit-server-sdk';
 import { Buffer } from 'node:buffer';
 import { setTimeout as delay } from 'node:timers/promises';
 import { z } from 'zod';
@@ -55,10 +56,12 @@ export class LiveKitRestClient {
         const timeoutId = setTimeout(() => controller.abort(), timeout);
 
         try {
+          const bearerToken = await this.createBearerToken();
+
           const requestInit: RequestInit = {
             method,
             headers: {
-              Authorization: this.getAuthHeader(),
+              Authorization: `Bearer ${bearerToken}`,
               Accept: 'application/json',
               ...extraHeaders,
             },
@@ -108,8 +111,17 @@ export class LiveKitRestClient {
     return `${this.baseUrl}${sanitizedPath}`;
   }
 
-  private getAuthHeader(): string {
-    const token = Buffer.from(`${this.apiKey}:${this.apiSecret}`, 'utf8').toString('base64');
-    return `Basic ${token}`;
+  private createBearerToken(): Promise<string> {
+    const token = new AccessToken(this.apiKey, this.apiSecret, {
+      identity: `rest-${Date.now()}`,
+      ttl: 60,
+    });
+    token.addGrant({
+      roomAdmin: true,
+      roomJoin: true,
+      canPublish: true,
+      canSubscribe: true,
+    });
+    return token.toJwt();
   }
 }
