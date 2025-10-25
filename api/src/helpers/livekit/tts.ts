@@ -8,11 +8,11 @@ import { AvatarStyleOptionsSchema, SynthesizeAvatarSpeechResponseSchema, synthes
 
 export const GenerateAvatarSpeechOptionsSchema = z.object({
   voice: z.string().optional(),
-  format: z.enum(['mp3', 'wav', 'ogg']).optional(),
+  format: z.enum(['mp3', 'wav', 'ogg']).optional().default('wav'),
   language: z.string().optional(),
   avatar: AvatarStyleOptionsSchema.optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
-  endpointPath: z.string().optional(),
+  model: z.string().optional(),
 });
 
 export type GenerateAvatarSpeechOptions = z.infer<typeof GenerateAvatarSpeechOptionsSchema>;
@@ -20,93 +20,98 @@ export type GenerateAvatarSpeechOptions = z.infer<typeof GenerateAvatarSpeechOpt
 export const GenerateAvatarSpeechResultSchema = SynthesizeAvatarSpeechResponseSchema;
 export type GenerateAvatarSpeechResult = SynthesizeAvatarSpeechResponse;
 
-const DEFAULT_VOICE = process.env.LIVEKIT_DEFAULT_VOICE ?? 'alloy';
+const DEFAULT_VOICE = process.env.LIVEKIT_DEFAULT_VOICE ?? '248be419-c632-4f23-adf1-5324ed7dbf1d';
 
 export async function generateAvatarSpeech(
   text: string,
   options: GenerateAvatarSpeechOptions = {},
 ): Promise<GenerateAvatarSpeechResult> {
+  // eslint-disable-next-line no-console
+  console.log('[TTS-Wrapper] generateAvatarSpeech called with:', {
+    textLength: text.length,
+    text: text.substring(0, 100) + (text.length > 100 ? '...' : ''),
+    options: {
+      voice: options.voice,
+      format: options.format,
+      language: options.language,
+      hasAvatar: !!options.avatar,
+      hasMetadata: !!options.metadata,
+      model: options.model,
+    },
+  });
+
   const normalized = text.trim();
   if (!normalized) {
     throw new Error('Input text must be a non-empty string');
   }
 
-  const response = await synthesizeAvatarSpeech({
+  const synthesisPayload = {
     text: normalized,
     voice: options.voice ?? DEFAULT_VOICE,
     format: options.format,
     language: options.language,
     avatar: options.avatar,
     metadata: options.metadata,
-    endpointPath: options.endpointPath,
-  });
+    model: options.model,
+  };
 
   // eslint-disable-next-line no-console
-  console.log('LiveKit generateAvatarSpeech received payload:', response);
+  console.log('[TTS-Wrapper] Calling synthesizeAvatarSpeech with:', synthesisPayload);
+
+  const response = await synthesizeAvatarSpeech(synthesisPayload);
+
+  // eslint-disable-next-line no-console
+  console.log('[TTS-Wrapper] generateAvatarSpeech received response:', {
+    requestId: response.requestId,
+    hasAudioUrl: !!response.audioUrl,
+    audioUrlLength: response.audioUrl?.length ?? 0,
+    hasAvatarUrl: !!response.avatarUrl,
+    durationSeconds: response.durationSeconds,
+    approximateLatencyMs: response.approximateLatencyMs,
+    hasTranscript: !!response.transcript,
+  });
 
   return response;
 }
 
 if (import.meta.url === new URL(process.argv[1] ?? '', 'file:').href) {
-  const inputText = process.argv.slice(2).join(' ') || `According to all known laws of aviation, there is no way a bee should be able to fly.
-Its wings are too small to get its fat little body off the ground.
-The bee, of course, flies anyway because bees don't care what humans think is impossible.
-Yellow, black. Yellow, black. Yellow, black. Yellow, black.
-Ooh, black and yellow!
-Let's shake it up a little.
-Barry! Breakfast is ready!
-Coming!
-Hang on a second.
-Hello?
-Barry?
-Adam?
-Can you believe this is happening?
-I can't.
-I'll pick you up.
-Looking sharp.
-Use the stairs, Your father paid good money for those.
-Sorry. I'm excited.
-Here's the graduate.
-We're very proud of you, son.
-A perfect report card, all B's.
-Very proud.
-Ma! I got a thing going here.
-You got lint on your fuzz.
-Ow! That's me!
-Wave to us! We'll be in row 118,000.
-Bye!
-Barry, I told you, stop flying in the house!
-Hey, Adam.
-Hey, Barry.
-Is that fuzz gel?
-A little. Special day, graduation.
-Never thought I'd make it.
-Three days grade school, three days high school.
-Those were awkward.
-Three days college. I'm glad I took a day and hitchhiked around The Hive.
-You did come back different.
-Hi, Barry. Artie, growing a mustache? Looks good.
-Hear about Frankie?
-Yeah.
-You going to the funeral?
-No, I'm not going.
-Everybody knows, sting someone, you die.
-Don't waste it on a squirrel.
-Such a hothead.
-I guess he could have just gotten out of the way.
-I love this incorporating an amusement park into our day.
-That's why we don't need vacations.
-Boy, quite a bit of pomp under the circumstances.
-Well, Adam, today we are men.`;
-  triggerCliRun(inputText).catch((error) => {
+  triggerCliRun(process.argv.slice(2)).catch((error) => {
     // eslint-disable-next-line no-console
     console.error('Failed to generate LiveKit speech:', error);
     process.exitCode = 1;
   });
 }
 
-async function triggerCliRun(inputText: string): Promise<void> {
-  const result = await generateAvatarSpeech(inputText);
+async function triggerCliRun(args: string[]): Promise<void> {
+  const textArgs = args.filter((arg) => !arg.startsWith('--'));
+  const flagArgs = args.filter((arg) => arg.startsWith('--'));
+
+  const inputText = textArgs.join(' ') || 'Hello from LectureGen!';
+
+  const options = flagArgs.reduce<GenerateAvatarSpeechOptions>((acc, flag) => {
+    const [key, value] = flag.slice(2).split('=');
+    if (!value) {
+      return acc;
+    }
+
+    switch (key) {
+      case 'voice':
+        acc.voice = value;
+        break;
+      case 'language':
+        acc.language = value;
+        break;
+      case 'model':
+        acc.model = value;
+        break;
+      default:
+        break;
+    }
+
+    return acc;
+  }, {});
+
+  const result = await generateAvatarSpeech(inputText, options);
   // eslint-disable-next-line no-console
   console.log('Generated LiveKit speech:', result);
   await logOutputs(inputText, result);
