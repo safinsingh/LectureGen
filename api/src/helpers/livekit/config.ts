@@ -12,7 +12,7 @@ export type LiveKitConfig = {
 const DEFAULT_TIMEOUT_MS = 15_000;
 
 export function getLiveKitConfig(): LiveKitConfig {
-  console.log(path.resolve(import.meta.dirname, "../../../../.env"));
+  //console.log(path.resolve(import.meta.dirname, "../../../../.env"));
   loadEnv({ path: path.resolve(import.meta.dirname, "../../../../.env") });
   
   const websocketUrl = process.env.LIVEKIT_WEBSOCKET_URL ?? '';
