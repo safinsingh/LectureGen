@@ -10,7 +10,7 @@ export class LLM {
   private model: string;
   private maxTokens: number;
 
-  constructor(apiKey: string, model = "claude-sonnet-4-5", maxTokens = 1024) {
+  constructor(apiKey: string, model = "claude-sonnet-4-5", maxTokens = 4096) {
     this.client = new Anthropic({ apiKey });
     this.model = model;
     this.maxTokens = maxTokens;
