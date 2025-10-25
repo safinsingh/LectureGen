@@ -7,11 +7,16 @@ import { SiteHeader } from '@/components/layout/site-header';
 export function ConditionalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
+  const workspacePrefixes = ['/dashboard', '/lectures/new'];
+  const isWorkspace = workspacePrefixes.some((prefix) =>
+    pathname.startsWith(prefix),
+  );
+
   // Routes that should NOT have header/footer
-  const isFullscreen = pathname === '/present';
+  const isFullscreen = pathname === '/present' || isWorkspace;
 
   if (isFullscreen) {
-    // No header, no footer - just the content
+    // No marketing chrome for fullscreen or workspace routes.
     return <>{children}</>;
   }
 
