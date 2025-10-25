@@ -120,9 +120,6 @@ importers:
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
-      dotenv:
-        specifier: ^17.2.3
-        version: 17.2.3
       firebase:
         specifier: ^12.4.0
         version: 12.4.0
