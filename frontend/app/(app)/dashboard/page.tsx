@@ -61,7 +61,7 @@ export default function DashboardPage() {
   if (loading || loadingLectures) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="h-12 w-12 animate-spin rounded-full border-4 border-slate-300 border-t-sky-600" />
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-slate-300 border-t-primary" />
       </div>
     );
   }
@@ -72,34 +72,38 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 py-16">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 py-20">
+        
+        {/* Hero Section */}
         <header className="text-center">
-          <h1 className="text-5xl font-bold text-slate-900">Hi {displayName}</h1>
-          <p className="mt-4 text-2xl font-semibold text-slate-900">
-            Ready to build your next lecture?
-          </p>
-          <p className="mt-4 text-base text-slate-600">
-            Assemble immersive learning experiences with a personalized mix of
-            walkthroughs, diagrams, and practice prompts.
+          <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-semibold text-primary mb-6">
+            👋 Welcome back
+          </div>
+          <h1 className="text-6xl font-bold text-slate-900 tracking-tight">
+            Greetings, {displayName}!
+          </h1>
+          <p className="mt-6 text-xl text-slate-600 max-w-2xl mx-auto">
+            Are you ready to dive into learning?
           </p>
         </header>
 
-        <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
+        {/* CTA Button */}
+        <div className="mt-12 flex justify-center">
           <button
             onClick={handleCreateProject}
             disabled={isCreatingProject}
-            className="inline-flex items-center gap-2 rounded-full bg-sky-600 px-8 py-4 font-semibold text-white shadow-md transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="group inline-flex items-center gap-3 rounded-full bg-gradient-to-r from-primary to-orange-600 px-10 py-5 text-lg font-semibold text-white shadow-lg transition-all hover:shadow-2xl hover:scale-105 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isCreatingProject ? (
               <>
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                Creating...
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                Creating your lecture...
               </>
             ) : (
               <>
                 <svg
-                  className="h-5 w-5"
+                  className="h-6 w-6 transition-transform group-hover:rotate-90"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -111,76 +115,66 @@ export default function DashboardPage() {
                     d="M12 4v16m8-8H4"
                   />
                 </svg>
-                Create New Project
+                Create New Lecture
               </>
             )}
           </button>
-          <Link
-            href="/settings"
-            className="inline-flex items-center gap-2 rounded-full border-2 border-slate-300 bg-white px-8 py-4 font-semibold text-slate-900 shadow-md transition hover:border-slate-400 hover:shadow-lg"
-          >
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-              />
-            </svg>
-            Settings
-          </Link>
         </div>
-        <section className="mt-14">
-          <div className="text-center md:flex md:items-end md:justify-between md:text-left">
+
+        {/* Lectures Section */}
+        <section className="mt-20">
+          <div className="flex items-end justify-between mb-8">
             <div>
-              <h2 className="text-2xl font-semibold text-slate-900">
+              <h2 className="text-3xl font-bold text-slate-900">
                 Your Recent Lectures
               </h2>
-              <p className="mt-2 text-sm text-slate-600">
+              <p className="mt-2 text-slate-600">
                 Pick up where you left off or dive into something new.
               </p>
             </div>
             {lectures.length > 0 && (
-              <p className="mt-4 text-xs font-medium uppercase tracking-wide text-slate-400 md:mt-0">
-                {lectures.length === 1
-                  ? "1 lecture"
-                  : `${lectures.length} lectures`}
-              </p>
+              <span className="rounded-full bg-slate-200 px-4 py-1.5 text-sm font-semibold text-slate-700">
+                {lectures.length} {lectures.length === 1 ? "lecture" : "lectures"}
+              </span>
             )}
           </div>
 
           {lectures.length === 0 ? (
-            <div className="mt-10 rounded-2xl border border-dashed border-slate-200 bg-white/70 py-16 text-center shadow-sm">
-              <p className="mt-6 text-lg font-medium text-slate-900">
+            <div className="rounded-3xl border-2 border-dashed border-slate-300 bg-white p-20 text-center shadow-sm">
+              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-slate-100">
+                <svg
+                  className="h-10 w-10 text-slate-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+              </div>
+              <p className="mt-6 text-xl font-semibold text-slate-900">
                 No lectures yet
               </p>
-              <p className="mt-2 text-sm text-slate-500">
-                Start by creating a new project to generate your first lecture.
+              <p className="mt-2 text-slate-500">
+                Click the button above to create your first personalized lecture.
               </p>
             </div>
           ) : (
-            <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
               {lectures.map((lecture) => (
                 <Link
                   key={lecture.lecture_id}
                   href={`/mdx?id=${lecture.lecture_id}`}
-                  className="group relative flex min-h-[160px] flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+                  className="group relative flex min-h-[180px] flex-col justify-between rounded-3xl border border-slate-200 bg-white p-8 shadow-sm transition-all hover:-translate-y-2 hover:shadow-xl"
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-sky-50">
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/10 to-orange-100">
                       <svg
-                        className="h-6 w-6 text-sky-600"
+                        className="h-7 w-7 text-primary"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -193,16 +187,15 @@ export default function DashboardPage() {
                         />
                       </svg>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-lg font-semibold text-slate-900 line-clamp-2">
-                        {lecture.lecture_topic}
-                      </h3>
-                    </div>
+                    <h3 className="text-lg font-bold text-slate-900 line-clamp-2 leading-snug">
+                      {lecture.lecture_topic}
+                    </h3>
                   </div>
-                  <div className="mt-4 flex items-center text-sm text-sky-600 font-medium">
+                  
+                  <div className="mt-6 flex items-center text-sm font-semibold text-primary">
                     <span>View lecture</span>
                     <svg
-                      className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-1"
+                      className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-2"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -211,7 +204,7 @@ export default function DashboardPage() {
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         strokeWidth={2}
-                        d="M9 5l7 7-7 7"
+                        d="M17 8l4 4m0 0l-4 4m4-4H3"
                       />
                     </svg>
                   </div>

@@ -35,7 +35,7 @@ export function WorkspaceHeader() {
                 href={link.href}
                 className={`rounded-full px-3 py-1.5 transition ${
                   isActive
-                    ? "bg-slate-900 text-white"
+                    ? "bg-primary !text-white"
                     : "hover:bg-slate-100 hover:text-slate-900"
                 }`}
               >
