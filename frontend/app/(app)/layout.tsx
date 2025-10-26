@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/auth-provider";
 import { WorkspaceHeader } from "@/components/layout/workspace-header";
 import { PreferencesModal } from "@/components/onboarding/preferences-modal";
@@ -19,7 +19,6 @@ export default function WorkspaceLayout({
 }) {
   const { user, loading, getIdToken } = useAuth();
   const router = useRouter();
-  const pathname = usePathname();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [checkingProfile, setCheckingProfile] = useState(true);
 
@@ -127,7 +126,7 @@ export default function WorkspaceLayout({
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {pathname !== "/settings" && <WorkspaceHeader />}
+      <WorkspaceHeader />
       <main>{children}</main>
       <PreferencesModal
         isOpen={showOnboarding}
