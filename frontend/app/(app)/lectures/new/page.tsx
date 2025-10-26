@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { CreateLectureQuestion } from "schema";
 import { getBackendEndpoint } from "@/lib/env";
 import { useAuth } from "@/components/auth/auth-provider";
+import { createLogger } from "@/lib/logger";
 
 type AnswersState = Record<string, string>;
 type ClarifyingAnswerValue = string | string[];
@@ -155,6 +156,8 @@ type LecturePreferences = {
   tone: "direct" | "warm" | "funny";
   enable_questions: boolean;
 };
+
+const logger = createLogger('LectureGen');
 
 export default function LectureConfiguratorPage() {
   const router = useRouter();
@@ -426,6 +429,7 @@ export default function LectureConfiguratorPage() {
     clarifying: ClarifyingAnswersState,
   ) => {
     if (typeof window === "undefined") {
+      logger.warn('Cannot persist config: window is undefined (SSR)');
       return null;
     }
 
@@ -438,26 +442,57 @@ export default function LectureConfiguratorPage() {
         lectureStubId,
         createdAt: new Date().toISOString(),
       };
+
+      logger.info('Persisting config to sessionStorage', {
+        storageKey,
+        lectureStubId,
+        questionCount: clarifyingQuestions?.length ?? 0,
+        payloadSize: JSON.stringify(enrichedPayload).length,
+      });
+
       sessionStorage.setItem(storageKey, JSON.stringify(enrichedPayload));
+
+      logger.info('Config successfully persisted to sessionStorage', {
+        storageKey,
+      });
+
       return storageKey;
     } catch (storageError) {
-      console.error(storageError);
+      logger.error('Failed to persist config to sessionStorage', {
+        error: storageError,
+        lectureStubId,
+      });
       return null;
     }
   };
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    logger.info('Form submission started', {
+      timestamp: new Date().toISOString(),
+      topic: answers["lecture-topic"],
+      hasFiles: clarifyingFiles.length > 0,
+      fileCount: clarifyingFiles.length,
+      questionCount: clarifyingQuestions?.length ?? 0,
+      lectureStubId,
+    });
+
     setIsSubmitting(true);
     setError(null);
 
     const storageKey = persistConfig(answers, clarifyingAnswers);
 
     if (!storageKey) {
-      setError("We couldn’t prepare your lecture handoff. Please try again.");
+      logger.error('Failed to persist config to sessionStorage');
+      setError("We couldn't prepare your lecture handoff. Please try again.");
       setIsSubmitting(false);
       return;
     }
+
+    logger.info('Config persisted, navigating to progress page', {
+      storageKey,
+      lectureStubId,
+    });
 
     router.push(`/lectures/new/progress?config=${storageKey}`);
   };
