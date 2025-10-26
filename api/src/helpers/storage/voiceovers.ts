@@ -42,6 +42,10 @@ export type UploadVoiceoverBufferOptions = {
    * Millisecond duration used to compute expiry if expiresAt is not provided.
    */
   expiresInMs?: number;
+  /**
+   * Optional Cache-Control header applied to the stored object.
+   */
+  cacheControl?: string;
 };
 
 export type UploadVoiceoverDataUrlOptions = Omit<
@@ -151,6 +155,7 @@ export async function uploadVoiceoverBuffer(
     metadata,
     expiresAt,
     expiresInMs,
+    cacheControl,
   } = options;
 
   if (!storageBucketName) {
@@ -173,6 +178,7 @@ export async function uploadVoiceoverBuffer(
   await file.save(buffer, {
     resumable: false,
     contentType: mimeType,
+    cacheControl,
     metadata: coerceMetadata({
       ...metadata,
       lectureId,

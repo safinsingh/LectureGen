@@ -27,6 +27,16 @@ try {
   );
 }
 
+const resolvedProjectId =
+  process.env.FIREBASE_PROJECT_ID ??
+  process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ??
+  serviceAccount?.project_id;
+
+const resolvedStorageBucket =
+  process.env.FIREBASE_STORAGE_BUCKET ??
+  process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ??
+  (resolvedProjectId ? `${resolvedProjectId}.appspot.com` : undefined);
+
 if (!admin.apps.length) {
   if (!serviceAccount) {
     throw new Error(
@@ -36,6 +46,8 @@ if (!admin.apps.length) {
 
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
+    projectId: resolvedProjectId,
+    storageBucket: resolvedStorageBucket,
   });
 }
 
@@ -130,3 +142,7 @@ export async function update_user_preferences(
 }
 
 export { admin, db };
+export const storageBucketName = resolvedStorageBucket;
+export function getDefaultStorageBucket() {
+  return admin.storage().bucket(resolvedStorageBucket);
+}
