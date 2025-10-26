@@ -72,7 +72,7 @@ export default function LoginPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary via-primary to-accent">
         <span className="h-12 w-12 animate-spin rounded-full border-2 border-primary-200 border-t-primary-500" />
       </div>
     );
@@ -83,14 +83,15 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-lg flex-col gap-10 px-6 py-16">
-      <div className="space-y-4 text-center">
-        <h1 className="text-3xl font-semibold text-foreground">
-          {mode === "login" ? "Welcome back" : "Create your learning profile"}
-        </h1>
-      </div>
+    <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-primary via-primary to-accent">
+      <div className="flex w-full max-w-lg flex-col gap-10 px-6">
+        <div className="space-y-4 text-center">
+          <h1 className="text-3xl font-semibold text-primary">
+            {mode === "login" ? "Welcome Back!" : "Create your learning profile"}
+          </h1>
+        </div>
 
-      <div className="rounded-3xl border border-primary-200 bg-white p-8 shadow-sm">
+        <div className="rounded-3xl border border-primary-200 bg-white p-8 shadow-sm">
         <form className="space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-2">
             <label
@@ -105,7 +106,7 @@ export default function LoginPage() {
               required
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              className="w-full rounded-xl border border-primary-200 px-4 py-3 text-sm transition focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
+              className="w-full rounded-xl border border-primary-200 px-4 py-3 text-sm text-slate-900 transition focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
               placeholder="you@example.com"
             />
           </div>
@@ -122,7 +123,7 @@ export default function LoginPage() {
               required
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="w-full rounded-xl border border-primary-200 px-4 py-3 text-sm transition focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
+              className="w-full rounded-xl border border-primary-200 px-4 py-3 text-sm text-slate-900 transition focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
               placeholder="Keep it secure"
             />
           </div>
@@ -151,7 +152,7 @@ export default function LoginPage() {
             type="button"
             onClick={handleGoogle}
             disabled={submitting}
-            className="inline-flex w-full items-center justify-center rounded-full border-2 border-primary-500 px-6 py-3 text-sm font-semibold text-primary-700 transition hover:bg-primary-50 active:bg-primary-100 disabled:cursor-not-allowed disabled:opacity-70"
+            className="inline-flex w-full items-center justify-center rounded-full border-2 border-primary-500 px-6 py-3 text-sm font-semibold text-slate-900 transition hover:bg-primary-50 active:bg-primary-100 disabled:cursor-not-allowed disabled:opacity-70"
           >
             Continue with Google
           </button>
@@ -168,6 +169,7 @@ export default function LoginPage() {
             ? "Need an account? Create one."
             : "Already have an account? Sign in."}
         </button>
+      </div>
       </div>
     </div>
   );

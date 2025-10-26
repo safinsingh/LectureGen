@@ -62,7 +62,7 @@ export default function Home() {
           <div className="max-w-2xl">
             
             <h1 className="mt-4 text-5xl font-bold tracking-tight sm:text-9xl">
-              Meet Blazz.
+              Meet Kinetic.
             </h1>
             <p className="mt-8 text-sm font-semibold uppercase tracking-widest text-white sm:text-2xl">
               Your study companion, powered by AI.
@@ -90,10 +90,10 @@ catching up, or mastering tough concepts.
         className="mx-auto flex w-full max-w-6xl flex-col gap-12 px-6 py-20"
       >
         <div className="max-w-3xl">
-          <h2 className="text-3xl font-semibold">Our mission</h2>
+          <h2 className="text-3xl font-semibold text-primary">Our mission</h2>
           <p className="mt-4 text-lg text-slate-600">
-            Lecture Gen enables rapid creation of personalized, high-engagement
-            lecture formats that adapt to each learner’s preferred modality and
+            Kinetic enables rapid creation of personalized, high-engagement
+            lecture formats that adapt to each learner's preferred modality and
             pacing. We believe every concept is more memorable when it is
             delivered in the language that resonates with the learner.
           </p>
@@ -103,9 +103,9 @@ catching up, or mastering tough concepts.
           {features.map((feature) => (
             <div
               key={feature.title}
-              className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+              className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-primary/20 hover:border-primary/30 hover:-translate-y-1"
             >
-              <h3 className="text-lg font-semibold text-slate-900">
+              <h3 className="text-lg font-semibold text-blue-900">
                 {feature.title}
               </h3>
               <p className="mt-3 text-sm text-slate-600">
@@ -119,9 +119,9 @@ catching up, or mastering tough concepts.
       <section id="how-it-works" className="bg-slate-50 py-20">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-12 px-6">
           <div className="max-w-2xl">
-            <h2 className="text-3xl font-semibold">From prompt to lecture</h2>
+            <h2 className="text-3xl font-semibold text-primary">From prompt to lecture</h2>
             <p className="mt-4 text-lg text-slate-600">
-              The Lecture Gen orchestration loop chains APIs and agent
+              The Kinetic orchestration loop chains APIs and agent
               workflows, so learners can explore the topic while assets are
               streaming in. Every piece is built for remixing through our
               structured outputs.
@@ -131,9 +131,9 @@ catching up, or mastering tough concepts.
             {deliveryFlow.map((step) => (
               <div
                 key={step.title}
-                className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+                className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-primary/20 hover:border-primary/30 hover:-translate-y-1"
               >
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <p className="text-xs font-semibold uppercase tracking-wide text-blue-900">
                   {step.title}
                 </p>
                 <p className="mt-3 text-sm text-slate-600">{step.description}</p>
@@ -145,9 +145,9 @@ catching up, or mastering tough concepts.
 
       <section className="mx-auto flex w-full max-w-6xl flex-col gap-12 px-6 py-20">
         <div className="max-w-2xl">
-          <h2 className="text-3xl font-semibold">Who we serve</h2>
+          <h2 className="text-3xl font-semibold text-primary">Who we serve</h2>
           <p className="mt-4 text-lg text-slate-600">
-            Traditional lectures are passive and one-size-fits-all. Lecture Gen
+            Traditional lectures are passive and one-size-fits-all. Kinetic
             gives control back to the learner, no matter the setting.
           </p>
         </div>
@@ -155,9 +155,9 @@ catching up, or mastering tough concepts.
           {useCases.map((useCase) => (
             <div
               key={useCase.title}
-              className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+              className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-primary/20 hover:border-primary/30 hover:-translate-y-1"
             >
-              <h3 className="text-lg font-semibold text-slate-900">
+              <h3 className="text-lg font-semibold text-blue-900">
                 {useCase.title}
               </h3>
               <p className="mt-3 text-sm text-slate-600">

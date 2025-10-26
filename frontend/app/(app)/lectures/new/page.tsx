@@ -157,7 +157,7 @@ type LecturePreferences = {
   enable_questions: boolean;
 };
 
-const logger = createLogger('LectureGen');
+const logger = createLogger('Kinetic');
 
 export default function LectureConfiguratorPage() {
   const router = useRouter();

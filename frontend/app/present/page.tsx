@@ -10,7 +10,7 @@ export default function PresentPage() {
   // Example slides - In production, these would come from props/API
   const testSlides: PartialSlide[] = [
     {
-      title: '**Welcome** to LectureGen',
+      title: '**Welcome** to Kinetic',
       content: `# Introduction
 
 This is an automated lecture generation system that transforms your content into beautiful presentations.
@@ -120,7 +120,7 @@ Feel free to ask questions in the chat!
 
 ---
 
-**Built with LectureGen** 🎓`,
+**Built with Kinetic** 🎓`,
     },
   ];
 

@@ -34,7 +34,7 @@ const ASSET_LABELS: Record<AssetKey, string> = {
 
 const ASSET_ORDER: AssetKey[] = ["images", "diagrams", "tts"];
 
-const logger = createLogger('LectureGen Progress');
+const logger = createLogger('Kinetic Progress');
 
 export default function LectureProgressPage() {
   const searchParams = useSearchParams();
