@@ -138,7 +138,7 @@ export const get_lectures: RouteHandler = async (req, res) => {
           lecture_topic: data.topic,
           status: "complete",
           slide_count: data.slides?.length ?? 0,
-          created_at: data.createdAt ?? null,
+          created_at: null, // createdAt not in Lecture schema
         };
       })
       .filter((lecture) => lecture !== null);
