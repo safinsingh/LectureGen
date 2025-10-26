@@ -1,10 +1,3 @@
-/// THIS IS JUST A MODEL ///
-
-type Uuid = string;
-type Audio = null; // placeholder for audio data, file path later
-type Diagram = string; // mermaid
-type Image = string; // URLencoded? src?
-type FirebaseStub = null; // firebase authentication
 type FileUpload = {
   name: string;
   content: string;
@@ -20,24 +13,25 @@ type LecturePreferences = {
   //   reference_youtuber: "3Blue1Brown" | "Crash Course" | "Veritasium";
 };
 
-type LectureSlide = {
-  transcript: string;
-  voiceover: string; // download URL; refers to audio in firebase/storage
-  title: string;
-  content?: string; // narrow: bullet points?
-  diagram?: Diagram;
-  image?: string; // url
-  question?: string
-};
+export const ZLectureSlide = z.object({
+  transcript: z.string(),
+  voiceover: z.string(), // download URL
+  title: z.string(),
+  content: z.string().optional(),
+  diagram: z.string().optional(),
+  image: z.string().optional(),
+  question: z.string().optional(),
+});
 
-type PartialSlide = Omit<LectureSlide, "transcript" | "voiceover">;
+export const ZLecture = z.object({
+  version: z.number(),
+  permitted_users: z.array(z.string()),
+  slides: z.array(ZLectureSlide),
+});
 
-type Lecture = {
-  version: number; // race condition: account for case where user sends new request before prev finishes
-  // share lecture -> ensure only registered users can access
-  permitted_users: string[]; // identify by: user.id
-  slides: LectureSlide[];
-};
+// Inferred TypeScript types (optional)
+export type LectureSlide = z.infer<typeof ZLectureSlide>;
+export type Lecture = z.infer<typeof ZLecture>;
 
 type User = {
   lectures: string[]; // by lecture.id or just uuid[]
@@ -106,32 +100,32 @@ type CreateLectureStatusUpdate =
       type: "completedAll";
     }
   | {
-    // sent once 
+      // sent once
       type: "completedOne";
       // "transcript" includes slide transcript, title, md content
       completed: "transcript";
     }
   | {
-    // sent continuously 
+      // sent continuously
       type: "completedOne";
       completed: "images" | "tts" | "diagrams";
       counter: number;
     }
   | {
-    // returns total number 
+      // returns total number
       type: "enumerated";
       thing: "images" | "diagrams" | "tts";
       total: number;
     };
 
 // User interrupts lecture to request question (mid-lecture)
-type UserInitiatedQuestionRequest = {
-  user_id: Uuid;
-  lecture_id: Uuid;
-  lecture_version: number;
-  slide: number;
-  question: string;
-};
+// type UserInitiatedQuestionRequest = {
+//   user_id: Uuid;
+//   lecture_id: Uuid;
+//   lecture_version: number;
+//   slide: number;
+//   question: string;
+// };
 
 // 2 diff lecture responses
 // Case 1: no need for additional slides, too big of question prompt to start new lecture
@@ -150,7 +144,7 @@ type BackendInitiatedQuestionRequest = {
   lecture_version: number;
   slide: number;
   question: string;
-  user_answer: string; 
+  user_answer: string;
 };
 
 // User responds to check-in question
