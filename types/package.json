@@ -3,10 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "files": [
+    "index.js",
     "index.d.ts",
     "zod_types.ts"
   ],
-  "main": "index.d.ts",
+  "main": "index.js",
   "types": "index.d.ts",
   "dependencies": {
     "zod": "^4.1.12"

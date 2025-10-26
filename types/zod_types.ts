@@ -1,5 +1,5 @@
 import * as z from "zod";
-import { ZLecture, ZLectureSlide } from ".";
+import { ZLecture, ZLectureSlide } from "./index.js";
 
 export const LectureConfigSchema = z.object({
   lecture_topic: z.string().min(1, "lecture_topic cannot be empty"),
