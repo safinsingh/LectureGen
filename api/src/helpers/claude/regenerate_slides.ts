@@ -1,6 +1,14 @@
 import * as z from "zod";
 import { LLM } from "./llm.js";
 import { LecturePreferences, LectureSlide } from "schema";
+import {
+  VISUAL_SELECTION_GUIDE,
+  TRANSCRIPT_LENGTH_GUIDE,
+  getToneInstruction,
+  formatSlideCountGuidance,
+  JSON_OUTPUT_REQUIREMENTS,
+  VALIDATION_CHECKLIST,
+} from "./prompt_constants.js";
 
 // Schema specifically for regenerated slides (topic not required since we already have it)
 const ZRegeneratedSlidesResponse = z.object({
@@ -71,84 +79,96 @@ export async function regenerate_slides_from_question(
     .map((slide, idx) => `## Slide ${idx + 1}: ${slide.title}\n${slide.transcript}`)
     .join("\n\n");
 
-  const PROMPT = `You are an expert lecturer who has been delivering a structured lecture on "${lecture_topic}".
+  const PROMPT = `You are an expert lecturer delivering a structured lecture on: "${lecture_topic}"
 
-You have delivered the following slides so far:
+## Current Situation:
 
+You have delivered slides 1-${current_slide_index + 1}. A student asked a question at slide ${current_slide_index + 1} that requires adjusting your lecture direction.
+
+Student's question: "${user_question}"
+
+## Analysis Result:
+${regeneration_instructions}
+
+## Slides Delivered So Far:
 ${previous_transcripts}
 
 ---
 
-A student has asked the following question at slide ${current_slide_index + 1}:
-"${user_question}"
-
-After analyzing this question, you have determined that the remaining slides need to be regenerated to better address the student's needs.
-
-## Regeneration Instructions:
-${regeneration_instructions}
-
 ## Your Task:
-Generate NEW slides starting from slide ${current_slide_index + 2} onwards that:
-1. Build upon the context already covered in the previous ${current_slide_index + 1} slides
-2. Address the student's question by adjusting the lecture's direction as described in the regeneration instructions
-3. Maintain continuity with what has already been taught
-4. Complete the lecture with appropriate depth and closure
 
-Return a JSON object with a top-level \`slides\` array. Each element inside \`slides\` must be an object with the following structure:
+Generate NEW slides starting from slide ${current_slide_index + 2} onward that:
+
+1. **Address the student's need** as described in the analysis above
+2. **Build on established foundation** - reference and extend concepts from slides 1-${current_slide_index + 1}
+3. **Maintain continuity** - don't re-explain material already covered
+4. **Provide proper closure** - end with a summary or conclusion slide
+
+## Continuity Requirements:
+
+✓ Reference concepts from previous slides naturally
+✓ Use consistent terminology and notation from slides 1-${current_slide_index + 1}
+✓ Build logically on the established foundation
+✗ Don't re-teach material already covered
+✗ Don't contradict or ignore previous content
+✗ Don't restart the topic from scratch
+
+## Output Structure:
+
+Return a JSON object with a "slides" array. Each slide contains:
+
 {
-  "transcript": string, // REQUIRED, plain text transcript for this segment
-  "slide": { // REQUIRED
-    "title": string, // REQUIRED slide title
-    "markdown_body": string // REQUIRED slide Markdown content; 4-6 lines of bullet points or short text.
-  },
-  "question": {
-    "question_text": string, // REQUIRED if question is present; the question you want the learner to answer
-    "suggested_answer": string // REQUIRED if question is present; the correct/expected answer
-  },
-  "image": {
-    "search_term": string, // short phrase suitable for image search
-    "extended_description": string, // longer 1-2 sentence caption-like description of what the image should depict
-  },
-  "diagram": {
-    "type": "flowchart-LR" | "flowchart-RL" | "flowchart-TB" | "flowchart-BT" | "sequenceDiagram" | "classDiagram" | "stateDiagram-v2" | "erDiagram" | "pie" // mermaid flowchart type,
-    "extended_description": string // detailed description of what the diagram should show
-  }
+  "slides": [
+    {
+      "transcript": string, // REQUIRED: 100-600 words (see length guide below)
+      "slide": {
+        "title": string, // REQUIRED: Clear, concise slide title
+        "markdown_body": string // REQUIRED: 4-6 bullet points or 2-3 short paragraphs
+      },
+      "question": { // OPTIONAL: Only if this segment naturally invites checking understanding
+        "question_text": string,
+        "suggested_answer": string
+      },
+      "image": { // OPTIONAL: See visual selection guide
+        "search_term": string, // 3-5 words for image search
+        "extended_description": string // 1-2 sentences describing ideal image
+      },
+      "diagram": { // OPTIONAL: See visual selection guide
+        "type": "flowchart-LR" | "flowchart-RL" | "flowchart-TB" | "flowchart-BT" | "sequenceDiagram" | "classDiagram" | "stateDiagram-v2" | "erDiagram" | "pie",
+        "extended_description": string // What the diagram should illustrate
+      }
+    }
+  ]
 }
 
-Please adhere to the following guidelines:
-- \`transcript\` is **always required**.
-- The nested \`slide\` object and its subfields are **always required**.
-- \`question\` is **optional**. Include it only if this part of the transcript naturally invites an in-lecture check-for-understanding. If included, it must contain both \`question_text\` and \`suggested_answer\`.
-- Either \`image\` **or** \`diagram\` may be included for each transcript segment — never both. It is also acceptable for a segment to include neither if a visual aid would not add clarity.
-- \`image\` is **optional**, but if included it must contain both \`search_term\` and \`extended_description\`.
-- \`diagram\` is **optional**, but if included it must contain both \`type\` and \`extended_description\`.
-- The final output must be **valid JSON** matching this structure and must not include any extra keys, commentary, or non-JSON text outside the object.
-- DO NOT include a \`topic\` field - only return the \`slides\` array.
+${VISUAL_SELECTION_GUIDE}
 
-Adjust your response according to the lecture preferences:
+${TRANSCRIPT_LENGTH_GUIDE}
 
-- The lecture was originally ${
-    user_preferences.lecture_length === "short"
-      ? "3–5"
-      : user_preferences.lecture_length === "medium"
-        ? "8–10"
-        : "12–15"
-  } slides in total. Since ${current_slide_index + 1} slides have already been delivered, generate approximately ${
-    user_preferences.lecture_length === "short"
-      ? Math.max(1, 5 - (current_slide_index + 1))
-      : user_preferences.lecture_length === "medium"
-        ? Math.max(2, 10 - (current_slide_index + 1))
-        : Math.max(3, 15 - (current_slide_index + 1))
-  } new slides to complete the lecture (or more if needed to properly address the question).
+## Lecture Preferences:
 
-- The lecture tone is "${user_preferences.tone}".
-  ${
-    user_preferences.tone === "direct"
-      ? "Write in a concise, factual, and instructional manner, minimizing filler."
-      : user_preferences.tone === "warm"
-        ? "Use a friendly, supportive, and encouraging tone, as if guiding a student patiently."
-        : "Add light humor or playful analogies where appropriate, keeping the content accurate and engaging."
-  }
+${formatSlideCountGuidance(user_preferences.lecture_length, current_slide_index + 1)}
+
+**Tone:** ${user_preferences.tone}
+${getToneInstruction(user_preferences.tone)}
+
+## Important Notes:
+
+- DO NOT include slide numbers in your output - the system assigns them automatically
+- DO NOT include a "topic" field - only return the "slides" array
+- NEVER include both image and diagram on the same slide
+- Visuals (image/diagram) are optional and may be sparse - only include when they add clear educational value
+- The question field is optional - only include for natural comprehension checkpoints
+
+${JSON_OUTPUT_REQUIREMENTS}
+
+${VALIDATION_CHECKLIST}
+☐ "slides" array present (no "topic" field)
+☐ Each slide has transcript and slide object
+☐ Transcripts build on slides 1-${current_slide_index + 1}
+☐ First 1-2 slides address the student's question
+☐ No slide has both image and diagram
+☐ Final slide provides closure/summary
 `;
 
   const response = await llm.sendMessage(PROMPT, ZRegeneratedSlidesResponse);

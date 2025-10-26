@@ -6,6 +6,16 @@ import {
   FileUpload,
   LecturePreferences,
 } from "schema";
+import {
+  VISUAL_SELECTION_GUIDE,
+  MERMAID_TYPE_REFERENCE,
+  TRANSCRIPT_LENGTH_GUIDE,
+  getToneInstruction,
+  formatSlideCountGuidance,
+  getExpectedSlideCount,
+  JSON_OUTPUT_REQUIREMENTS,
+  VALIDATION_CHECKLIST,
+} from "./prompt_constants.js";
 
 export type GenerateTranscriptRequest = {
   lecture_topic: string;
@@ -26,12 +36,6 @@ export const ZGenerateTranscriptResponse = z.object({
         title: z.string(),
         markdown_body: z.string(),
       }),
-      question: z.optional(
-        z.object({
-          question_text: z.string(),
-          suggested_answer: z.string(),
-        })
-      ),
       image: z.optional(
         z.object({
           search_term: z.string(),
@@ -69,20 +73,25 @@ const question_answer_to_text = (
   question: CreateLectureQuestion,
   answer: CreateLectureAnswer
 ) => {
-  let qn_type;
+  let qn_type: string;
   switch (question.question_type) {
     case "checkbox":
       qn_type = "Multiple Choice";
+      break;
     case "radio":
       qn_type = "Single Select";
+      break;
     case "text_input":
       qn_type = "Open Ended";
+      break;
+    default:
+      qn_type = "Unknown";
   }
   let acc = new StringAccumulator(`${qn_type} Q: ${question.question}`);
   if (question.question_type !== "text_input") {
     acc.add("Possible options:");
     for (const opt of question.options) {
-      acc.add(opt.text);
+      acc.add(`  - ${opt.text}`);
     }
   }
   acc.add(`A: ${answer.answer}`); // backend should validate earlier that id matches (oneof) qn opt ids
@@ -103,88 +112,120 @@ export async function generate_transcript(
     custom_preferences,
   } = generate_transcript_request;
 
-  const effective_preferences = Object.assign(
-    user_preferences,
-    custom_preferences
-  );
+  const effective_preferences = {
+    ...user_preferences,
+    ...custom_preferences, // custom takes precedence
+  };
 
-  // debug_assert_eq(questions.len(), answers.len())
+  // Determine if we have substantial reference material
+  const totalContentLength = file_uploads.reduce((sum, f) => sum + f.content.length, 0);
+  const hasSubstantialContent = totalContentLength > 100;
 
-  const PROMPT = `
-${augment_slides_instructions ? `You are an expert lecturer being asked to adjust your lecture lecture on the following: ${lecture_topic}.` + augment_slides_instructions : `You are an expert lecturer being asked to lecture on the following: ${lecture_topic}.`}
-You have asked the following clarifying questions and have been given the following answers:
+  const PROMPT = `You are an expert lecturer creating a structured, slide-by-slide lecture.
+
+${augment_slides_instructions
+  ? `## Adjustment Context:\n${augment_slides_instructions}\n`
+  : `## Lecture Topic:\n"${lecture_topic}"\n`}
+
+## Student Preferences (from clarifying questions):
 
 ${questions.map((qn, qidx) => question_answer_to_text(qn, answers[qidx])).join("\n\n")}
 
-You have also been given the following context. Please reference this context to ground your response, including quotes where necessary. Do not wrap the context in quotes; pretend as if the content you have written is yours and reference it freely.
+## Reference Materials:
+${hasSubstantialContent
+  ? `You have been provided with the following reference materials. Use these to ground your lecture content. Quote directly where relevant, using quotation marks for direct quotes. Integrate this material naturally into your lecture presentation.
 
-${file_uploads.map((u) => `**${u.name}**\n${u.content}`)}
+${file_uploads.map((u) => `**Source: ${u.name}**\n${u.content}`).join("\n\n---\n\n")}`
+  : `Limited or no reference materials provided. Rely on your own expertise to create high-quality lecture content on "${lecture_topic}".`}
 
-Please generate a response as follows:
-Each item in the returned lecture should represent a single **slide** in a lecture-style presentation. The \`transcript\` field corresponds to the spoken narration or written content that would appear on that slide. The \`slide\` field must contain a \`title\` for the slide and a \`markdown_body\` with the Markdown content that should be shown (4-6 bullet points or concise lines). Optional \`image\`, \`diagram\`, and \`question\` fields should be used only when they enhance the educational value of that specific slide. The goal is to produce a structured lecture that could be seamlessly rendered into a sequence of slides, each containing its own transcript (and optionally a visual or question) as teaching material.
+---
 
-Return a JSON object with a top-level \`slides\` array and a \`topic\` field. The \`topic\` field should be a short title for the presentation. Each element inside \`slides\` must be an object with the following structure:
+## Your Task:
+
+Create a complete lecture as a series of slides. Each slide represents one segment of your lecture presentation.
+
+## Output Structure:
+
+Return a JSON object with:
+- \`topic\`: A short, engaging title for the entire lecture (5-10 words)
+- \`slides\`: Array of slide objects
+
 {
-  "transcript": string, // REQUIRED, plain text transcript for this segment
-  "slide": { // REQUIRED
-    "title": string, // REQUIRED slide title
-    "markdown_body": string // REQUIRED slide Markdown content; 4-6 lines of bullet points or short text.
-  },
-  "question": {
-    "question_text": string, // REQUIRED if question is present; the question you want the learner to answer
-    "suggested_answer": string // REQUIRED if question is present; the correct/expected answer
-  },
-  "image": {
-    "search_term": string, // short phrase suitable for image search
-    "extended_description": string, // longer 1-2 sentence caption-like description of what the image should depict
-  },
-  "diagram": {
-    "type": "flowchart-LR" | "flowchart-RL" | "flowchart-TB" | "flowchart-BT" | "sequenceDiagram" | "classDiagram" | "stateDiagram-v2" | "erDiagram" | "pie" // mermaid flowchart type,
-    "extended_description": string // detailed description of what the diagram should show
-  }
+  "topic": "Your Lecture Title Here",
+  "slides": [
+    {
+      "transcript": string, // REQUIRED: The spoken narration for this slide
+      "slide": { // REQUIRED
+        "title": string, // REQUIRED: This slide's title
+        "markdown_body": string // REQUIRED: 4-6 bullet points OR 2-3 short paragraphs
+      },
+      "image": { // OPTIONAL
+        "search_term": string, // 3-5 words for image search
+        "extended_description": string // 1-2 sentence description
+      },
+      "diagram": { // OPTIONAL
+        "type": "flowchart-LR" | "flowchart-RL" | "flowchart-TB" | "flowchart-BT" | "sequenceDiagram" | "classDiagram" | "stateDiagram-v2" | "erDiagram" | "pie",
+        "extended_description": string // What to illustrate
+      }
+    }
+  ]
 }
 
-Please adhere to the following guidelines:
-- \`topic\` is **always required**.
-- \`transcript\` is **always required**.
-- The nested \`slide\` object and its subfields are **always required**.
-- \`question\` is **optional**. Include it only if this part of the transcript naturally invites an in-lecture check-for-understanding. If included, it must contain both \`question_text\` and \`suggested_answer\`.
-- Either \`image\` **or** \`diagram\` may be included for each transcript segment — never both. It is also acceptable for a segment to include neither if a visual aid would not add clarity.
-- \`image\` is **optional**, but if included it must contain both \`search_term\` and \`extended_description\`.
-- \`diagram\` is **optional**, but if included:
-  - It must contain both \`type\` and \`extended_description\`.
-  - The \`type\` must be exactly one of the following:
-    - \`"flowchart-LR"\`, \`"flowchart-RL"\`, \`"flowchart-TB"\`, \`"flowchart-BT"\` — **Flowcharts** visualize process flow or logical branching. Nodes (geometric shapes) represent steps, and edges (arrows) define transitions or dependencies. Mermaid flowcharts support directional variants:
-      - \`LR\` = left-to-right,
-      - \`RL\` = right-to-left,
-      - \`TB\` = top-to-bottom,
-      - \`BT\` = bottom-to-top.
-      Arrows can have different heads or styles (e.g., solid, dotted, bidirectional), and subgraphs can group related nodes. Use when illustrating algorithms, workflows, or causal structures.
-    - \`"sequenceDiagram"\` — **Sequence diagrams** describe message flow between participants over time. Each participant (actor or component) is represented by a vertical lifeline, and horizontal arrows show synchronous or asynchronous communication, activations, and returns. Useful for modeling protocols, request–response patterns, or multi-step interactions between systems or roles.
-    - \`"classDiagram"\` — **Class diagrams** represent object-oriented structures. Each class has attributes and methods, and relationships (e.g., inheritance, composition, association) are depicted as labeled links. Ideal for showing type hierarchies, data models, or software architecture.
-    - \`"stateDiagram-v2"\` — **State diagrams** depict finite-state machines, showing how a system transitions between discrete states in response to events. Each node is a state, and edges represent transitions. Useful for modeling protocols, UI flows, or lifecycle logic.
-    - \`"erDiagram"\` — **Entity–relationship diagrams** model relational data structures. Entities represent data objects, and relationships express cardinalities and connections (one-to-one, one-to-many, many-to-many). Use to visualize schemas, domain models, or database designs.
-    - \`"pie"\` — **Pie charts** display numerical proportions in a circular form. Each slice’s arc length and area are proportional to its value. Titles and labels describe categories. Use when summarizing categorical data or proportions in a transcript’s content.
-- The final output must be **valid JSON** matching this structure and must not include any extra keys, commentary, or non-JSON text outside the object.
+### Field Requirements:
 
-Adjust your response according to the current lecture preferences:
+**REQUIRED fields:**
+- \`topic\` (top-level): Short lecture title
+- \`transcript\`: Spoken narration (100-600 words per slide - see guide below)
+- \`slide.title\`: Clear slide title
+- \`slide.markdown_body\`: 4-6 bullet points OR 2-3 short paragraphs
 
-- Lecture length is set to "${effective_preferences.lecture_length}", so you should generate approximately ${
-    effective_preferences.lecture_length === "short"
-      ? "3–5"
-      : effective_preferences.lecture_length === "medium"
-        ? "8–10"
-        : "12–15"
-  } slides in total.
+**OPTIONAL fields:**
+- \`image\`: If included, must have both \`search_term\` and \`extended_description\`
+- \`diagram\`: If included, must have both \`type\` and \`extended_description\`
 
-- The lecture tone is "${effective_preferences.tone}".  
-  ${
-    effective_preferences.tone === "direct"
-      ? "Write in a concise, factual, and instructional manner, minimizing filler."
-      : effective_preferences.tone === "warm"
-        ? "Use a friendly, supportive, and encouraging tone, as if guiding a student patiently."
-        : "Add light humor or playful analogies where appropriate, keeping the content accurate and engaging."
-  }
+**Rules:**
+- NEVER include both image and diagram on the same slide (choose one or neither)
+- Visuals are optional and may be sparse - only include when they add clear educational value
+
+${VISUAL_SELECTION_GUIDE}
+
+${MERMAID_TYPE_REFERENCE}
+
+${TRANSCRIPT_LENGTH_GUIDE}
+
+## Slide Content Quality:
+
+Good slides:
+✓ Cover ONE main concept per slide
+✓ Include concrete examples where applicable
+✓ Build progressively (each slide builds on previous)
+✓ Use consistent terminology throughout
+✓ Balance theory with application
+✓ End with summary or conclusion
+
+Poor slides:
+✗ Try to cover multiple unrelated concepts
+✗ Only abstract theory without examples
+✗ Redundant with previous slides
+✗ Inconsistent terminology
+✗ Walls of text (keep markdown_body concise)
+
+## Lecture Preferences:
+
+${formatSlideCountGuidance(effective_preferences.lecture_length)}
+
+**Tone:** ${effective_preferences.tone}
+${getToneInstruction(effective_preferences.tone)}
+
+${JSON_OUTPUT_REQUIREMENTS}
+
+${VALIDATION_CHECKLIST}
+☐ "topic" field present at top level
+☐ "slides" array present with ${getExpectedSlideCount(effective_preferences.lecture_length)} slides (±1 okay)
+☐ Each slide has transcript and slide object with title and markdown_body
+☐ No slide has both image and diagram
+☐ Transcripts are 100-600 words each
+☐ Lecture builds progressively from intro to conclusion
 `;
 
   const response = await llm.sendMessage(PROMPT, ZGenerateTranscriptResponse);
@@ -192,7 +233,7 @@ Adjust your response according to the current lecture preferences:
   if (!response || !response.slides || response.slides.length === 0) {
     throw new Error(
       "LLM returned invalid transcript response: " +
-      (response ? `missing or empty slides array` : "undefined response")
+        (response ? `missing or empty slides array` : "undefined response")
     );
   }
 

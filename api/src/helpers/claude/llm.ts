@@ -67,6 +67,46 @@ export class LLM {
   }
 
   /**
+   * Sends a message with retry logic for cases where LLM may fail validation
+   *
+   * @param prompt - The prompt to send
+   * @param schema - Zod schema for validation
+   * @param maxRetries - Maximum number of retries (default: 1)
+   * @param retryContext - Additional context to add on retry attempts
+   * @returns Parsed response matching schema
+   * @throws Error if all attempts fail
+   */
+  async sendMessageWithRetry<T extends z.ZodType>(
+    prompt: string,
+    schema: T,
+    maxRetries: number = 1,
+    retryContext?: string
+  ): Promise<z.infer<T>> {
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const enhancedPrompt = attempt > 0 && retryContext
+          ? `${prompt}\n\n⚠️ RETRY ATTEMPT ${attempt}: Previous attempt failed. ${retryContext}`
+          : prompt;
+
+        return await this.sendMessage(enhancedPrompt, schema);
+      } catch (error) {
+        lastError = error as Error;
+        if (attempt === maxRetries) {
+          throw new Error(
+            `Failed after ${maxRetries + 1} attempts. Last error: ${lastError.message}`
+          );
+        }
+        // Wait briefly before retry
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+
+    throw lastError!;
+  }
+
+  /**
    * Sends multiple prompts as a batch and returns an array of parsed responses.
    * All responses will conform to the same schema.
    */
