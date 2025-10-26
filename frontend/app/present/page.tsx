@@ -182,7 +182,7 @@ Feel free to ask questions in the chat!
       <div className="flex-1 flex flex-col">
         {/* Slide Display - Takes remaining vertical space */}
         <div className="flex-1 overflow-hidden">
-          <Slide lectureSlides={testSlides} i={currentSlide} />
+          <Slide lectureSlides={testSlides as any} i={currentSlide} />
         </div>
 
         {/* Navigation Controls - Fixed height at bottom */}
@@ -203,11 +203,10 @@ Feel free to ask questions in the chat!
                 <button
                   key={index}
                   onClick={() => goToSlide(index)}
-                  className={`h-2 rounded-full transition-all ${
-                    index === currentSlide
+                  className={`h-2 rounded-full transition-all ${index === currentSlide
                       ? 'bg-blue-500 w-8'
                       : 'bg-gray-500 hover:bg-gray-400 w-2'
-                  }`}
+                    }`}
                   aria-label={`Go to slide ${index + 1}`}
                   title={testSlides[index].title}
                 />

@@ -136,16 +136,16 @@ function useLectureChannel(lectureId: string): UseLectureChannelReturn {
             break;
           }
 
-          case 'backend_question': {
-            const backendQuestionValidation = ZBackendQuestionRequest.safeParse(message);
-            if (!backendQuestionValidation.success) {
-              console.error('[useLectureChannel] Invalid backend_question:', backendQuestionValidation.error);
-              return;
-            }
-            console.log('[useLectureChannel] Backend question received');
-            setLastBackendQuestion(backendQuestionValidation.data);
-            break;
-          }
+          // case 'backend_question': {
+          //   const backendQuestionValidation = ZBackendQuestionRequest.safeParse(message);
+          //   if (!backendQuestionValidation.success) {
+          //     console.error('[useLectureChannel] Invalid backend_question:', backendQuestionValidation.error);
+          //     return;
+          //   }
+          //   console.log('[useLectureChannel] Backend question received');
+          //   setLastBackendQuestion(backendQuestionValidation.data);
+          //   break;
+          // }
         }
       } catch (error) {
         console.error('[useLectureChannel] Failed to parse message:', error);
@@ -227,8 +227,8 @@ export default function MDXTestPage() {
   const error = !lectureId
     ? 'No lecture ID provided. Add ?id=your-lecture-id to the URL.'
     : phase === 'disconnected' && !lecture
-    ? 'Failed to connect to server. Please try again.'
-    : null;
+      ? 'Failed to connect to server. Please try again.'
+      : null;
 
   // keyboard navigation
   useEffect(() => {
@@ -379,22 +379,21 @@ export default function MDXTestPage() {
         {/* Connection Status Indicator - Floating */}
         <div className="absolute top-4 left-4 px-3 py-1.5 bg-white rounded-lg shadow-lg text-xs font-medium flex items-center gap-2">
           <div
-            className={`w-2 h-2 rounded-full ${
-              phase === 'ready'
+            className={`w-2 h-2 rounded-full ${phase === 'ready'
                 ? 'bg-green-500'
                 : phase === 'disconnected'
-                ? 'bg-red-500'
-                : 'bg-yellow-500 animate-pulse'
-            }`}
+                  ? 'bg-red-500'
+                  : 'bg-yellow-500 animate-pulse'
+              }`}
           />
           <span className="text-gray-700">
             {phase === 'ready'
               ? 'Connected'
               : phase === 'disconnected'
-              ? 'Disconnected'
-              : phase === 'connecting'
-              ? 'Connecting...'
-              : 'Loading lecture...'}
+                ? 'Disconnected'
+                : phase === 'connecting'
+                  ? 'Connecting...'
+                  : 'Loading lecture...'}
           </span>
         </div>
       </div>
@@ -507,11 +506,10 @@ export default function MDXTestPage() {
               <button
                 key={index}
                 onClick={() => goToSlide(index)}
-                className={`w-3 h-3 rounded-full transition-all ${
-                  index === currentSlide
+                className={`w-3 h-3 rounded-full transition-all ${index === currentSlide
                     ? 'bg-blue-500 w-8'
                     : 'bg-gray-500 hover:bg-gray-400'
-                }`}
+                  }`}
                 aria-label={`Go to slide ${index + 1}`}
                 title={lecture.slides[index].title}
               />
