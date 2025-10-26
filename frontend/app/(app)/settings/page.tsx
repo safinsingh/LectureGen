@@ -153,24 +153,23 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+  <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       <div className="mx-auto max-w-3xl px-6 py-16">
-        <header className="mb-10">
-          <h1 className="text-4xl font-bold text-slate-900">Settings</h1>
-          <p className="mt-3 text-lg text-slate-600">
-            Customize your default lecture preferences. These will be used as
-            defaults when creating new lectures.
+        <header className="mb-12">
+          <h1 className="text-5xl font-bold text-slate-900">Settings</h1>
+          <p className="mt-4 text-lg text-slate-600">
+            Customize your default lecture preferences. These will be used as defaults when creating new lectures.
           </p>
         </header>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+        <div className="rounded-3xl border border-slate-200 bg-white p-10 shadow-lg">
           <div className="space-y-8">
             {/* Lecture Length */}
             <div>
-              <label className="mb-3 block text-sm font-semibold text-slate-900">
+              <label className="mb-3 block text-xl font-semibold text-slate-900">
                 Lecture Length
               </label>
-              <p className="mb-4 text-sm text-slate-600">
+              <p className="mb-4 text-base text-slate-600">
                 Choose the default length for your lectures (short: 3-5 slides,
                 medium: 8-10 slides, long: 12-15 slides)
               </p>
@@ -182,10 +181,10 @@ export default function SettingsPage() {
                     onClick={() =>
                       setPreferences({ ...preferences, lecture_length: length })
                     }
-                    className={`rounded-xl border-2 px-4 py-3 font-medium transition ${
+                    className={`rounded-2xl border-2 px-4 py-4 font-semibold transition-all ${
                       preferences.lecture_length === length
-                        ? "border-sky-600 bg-sky-50 text-sky-700"
-                        : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                        ? "border-blue-500 bg-blue-50 text-blue-700 shadow-md scale-105"
+                        : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
                     }`}
                   >
                     {length.charAt(0).toUpperCase() + length.slice(1)}
@@ -193,13 +192,14 @@ export default function SettingsPage() {
                 ))}
               </div>
             </div>
+            <div className="border-t border-slate-200" />
 
             {/* Tone */}
             <div>
-              <label className="mb-3 block text-sm font-semibold text-slate-900">
+              <label className="mb-3 block text-xl font-semibold text-slate-900">
                 Tone
               </label>
-              <p className="mb-4 text-sm text-slate-600">
+              <p className="mb-4 text-base text-slate-600">
                 Select the default tone for lecture content
               </p>
               <div className="grid grid-cols-3 gap-3">
@@ -208,10 +208,10 @@ export default function SettingsPage() {
                     key={tone}
                     type="button"
                     onClick={() => setPreferences({ ...preferences, tone })}
-                    className={`rounded-xl border-2 px-4 py-3 font-medium transition ${
+                    className={`rounded-2xl border-2 px-4 py-4 font-semibold transition-all ${
                       preferences.tone === tone
-                        ? "border-sky-600 bg-sky-50 text-sky-700"
-                        : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                        ? "border-blue-500 bg-blue-50 text-blue-700 shadow-md scale-105"
+                        : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
                     }`}
                   >
                     {tone.charAt(0).toUpperCase() + tone.slice(1)}
@@ -219,13 +219,15 @@ export default function SettingsPage() {
                 ))}
               </div>
             </div>
+            <div className="border-t border-slate-200" />
+
 
             {/* Enable Questions */}
             <div>
-              <label className="mb-3 block text-sm font-semibold text-slate-900">
+              <label className="mb-3 block text-xl font-semibold text-slate-900">
                 Practice Questions
               </label>
-              <p className="mb-4 text-sm text-slate-600">
+              <p className="mb-4 text-base text-slate-600">
                 Include interactive questions during lectures
               </p>
               <button
@@ -236,10 +238,10 @@ export default function SettingsPage() {
                     enable_questions: !preferences.enable_questions,
                   })
                 }
-                className={`flex items-center gap-3 rounded-xl border-2 px-5 py-3 transition ${
+                className={`flex items-center gap-3 rounded-2xl border-2 px-5 py-4 transition-all ${
                   preferences.enable_questions
-                    ? "border-sky-600 bg-sky-50"
-                    : "border-slate-200 bg-white hover:border-slate-300"
+                    ? "border-blue-500 bg-blue-50 shadow-md"
+                    : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
                 }`}
               >
                 <div
@@ -278,7 +280,7 @@ export default function SettingsPage() {
               type="button"
               onClick={handleSave}
               disabled={isSaving}
-              className="rounded-full bg-sky-600 px-8 py-3 font-semibold text-white shadow-md transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-4 font-semibold text-white shadow-lg transition-all hover:shadow-xl hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSaving ? (
                 <span className="flex items-center gap-2">
