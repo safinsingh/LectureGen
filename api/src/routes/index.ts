@@ -17,6 +17,7 @@ import {
 } from "./user_profile.js";
 // added for S7 lecture gen
 import { watch_lecture } from "./watch_lecture.js";
+import { get_lectures } from "./get_lectures.js";
 
 // HTTP handler for WebSocket-only lecture endpoint
 const createLectureHttpHandler = (): RouteHandler => {
@@ -133,5 +134,12 @@ export function registerRoutes(
     url: "/api/tts",
     handler: createTtsHttpHandler(),
     wsHandler: createTtsWebsocketHandler(),
+  });
+
+  app.route({
+    method: "GET",
+    url: "/api/get_lectures",
+    preHandler: verify_firebase_token,
+    handler: get_lectures,
   });
 }
