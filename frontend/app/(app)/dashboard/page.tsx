@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { getBackendEndpoint } from "@/lib/env";
 
 interface Lecture {
   id: string;
@@ -199,7 +198,6 @@ export default function DashboardPage() {
   const router = useRouter();
   const [folders, setFolders] = useState<Folder[]>(mockFolders);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
-  const [createError, setCreateError] = useState<string | null>(null);
   const displayName =
     user?.displayName?.split(" ")[0] ??
     (user?.email ? user.email.split("@")[0] : "there");
@@ -235,64 +233,9 @@ export default function DashboardPage() {
     setFolders((prev) => updateFolders(prev));
   };
 
-  const handleCreateProject = async () => {
+  const handleCreateProject = () => {
     setIsCreatingProject(true);
-    setCreateError(null);
-    let backendEndpoint: string | null = null;
-    try {
-      backendEndpoint = getBackendEndpoint();
-    } catch (error) {
-      console.warn("Backend endpoint not configured; skipping project API.", error);
-    }
-
-    try {
-      if (backendEndpoint) {
-        const payload = {
-          lecture_config: {
-            lecture_topic: "Untitled Lecture",
-          },
-          lecture_preferences: {
-            lecture_length: "medium",
-            tone: "warm",
-            enable_questions: true,
-          },
-        };
-
-        const headers: Record<string, string> = {
-          "Content-Type": "application/json",
-        };
-
-        if (user) {
-          try {
-            const token = await user.getIdToken();
-            headers.Authorization = `Bearer ${token}`;
-          } catch (error) {
-            console.warn("Failed to fetch auth token; proceeding without it.", error);
-          }
-        }
-
-        const response = await fetch(`${backendEndpoint}create-lecture-initial`, {
-          method: "POST",
-          headers,
-          body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to create project (${response.status})`);
-        }
-
-        const data = await response.json();
-        console.log("Project created:", data);
-      }
-    } catch (error) {
-      console.error("Error creating project:", error);
-      setCreateError(
-        "We couldn’t spin up your project. Please try again shortly.",
-      );
-    } finally {
-      setIsCreatingProject(false);
-      router.push("/lectures/new");
-    }
+    router.push("/lectures/new");
   };
 
   return (
@@ -340,10 +283,6 @@ export default function DashboardPage() {
             )}
           </button>
         </div>
-        {createError ? (
-          <p className="mt-4 text-center text-sm text-red-600">{createError}</p>
-        ) : null}
-
         <section className="mt-14">
           <div className="text-center md:flex md:items-end md:justify-between md:text-left">
             <div>
