@@ -385,9 +385,9 @@ export const create_lecture_main: WebsocketHandler = async (ws, req) => {
       })
     );
 
-  // LiveKit image generation currently allows up to 20 concurrent streams.
+  // LiveKit image generation currently allows up to 15 concurrent streams.
   // Use a simple limiter to stay within the platform constraints.
-  const imageConcurrencyLimit = createLimiter(20);
+  const imageConcurrencyLimit = createLimiter(15);
 
   const imageTasks = ts
     .map((s, sidx) => ({ s, sidx }))
