@@ -284,7 +284,7 @@ export default function DashboardPage() {
           </button>
           <Link
             href="/settings"
-            className="inline-flex items-center gap-2 rounded-full border-2 border-slate-200 bg-white px-8 py-4 font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+            className="inline-flex items-center gap-2 rounded-full border-2 border-slate-300 bg-white px-8 py-4 font-semibold text-slate-900 shadow-md transition hover:border-slate-400 hover:shadow-lg"
           >
             <svg
               className="h-5 w-5"
