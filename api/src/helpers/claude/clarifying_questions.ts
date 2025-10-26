@@ -23,29 +23,24 @@ export const ZGenerateClarifyingQuestionsResponse = z.object({
       z.object({
         question_type: z.literal("radio"),
         question: z.string(),
-        question_id: z.string(), // UUID
         options: z.array(
           z.object({
             text: z.string(),
-            option_id: z.string(), // UUID
           })
         ),
       }),
       z.object({
         question_type: z.literal("checkbox"),
         question: z.string(),
-        question_id: z.string(),
         options: z.array(
           z.object({
             text: z.string(),
-            option_id: z.string(),
           })
         ),
       }),
       z.object({
         question_type: z.literal("text_input"),
         question: z.string(),
-        question_id: z.string(),
       }),
     ])
   ),
@@ -57,11 +52,7 @@ export async function generate_clarifying_questions(
 ): Promise<CreateLectureQuestion[]> {
   const parsedReq = ZGenerateClarifyingQuestionsRequest.parse(req);
 
-  const {
-    topic,
-    user_preferences,
-    custom_preferences,
-  } = parsedReq;
+  const { topic, user_preferences, custom_preferences } = parsedReq;
 
   const effective_preferences = {
     ...user_preferences,
@@ -87,11 +78,9 @@ For radio (single-choice) or checkbox (multiple-choice) questions:
 {
   "question_type": "radio" OR "checkbox",
   "question": string, // The question text to ask the user
-  "question_id": string, // A unique identifier (UUID format like "q1", "q2", etc.)
   "options": [
     {
       "text": string, // The option text
-      "option_id": string // A unique identifier for this option (like "opt1", "opt2", etc.)
     }
   ]
 }
@@ -99,8 +88,7 @@ For radio (single-choice) or checkbox (multiple-choice) questions:
 For open-ended text questions:
 {
   "question_type": "text_input",
-  "question": string, // The question text to ask the user
-  "question_id": string // A unique identifier (UUID format like "q1", "q2", etc.)
+  "question": string // The question text to ask the user
 }
 
 **Guidelines:**
@@ -126,7 +114,16 @@ ${
 **Output:** Return ONLY valid JSON matching the structure above. Do not include any extra keys, commentary, or non-JSON text.
 `;
 
-// is there some way we should store the definitions of different tones so that we're not copy-pasting it each time?
-  const result = await llm.sendMessage(PROMPT, ZGenerateClarifyingQuestionsResponse);
-  return result.questions;
+  // is there some way we should store the definitions of different tones so that we're not copy-pasting it each time?
+  const result = (await llm.sendMessage(
+    PROMPT,
+    ZGenerateClarifyingQuestionsResponse
+  ))! as { questions: Partial<CreateLectureQuestion>[] };
+  result.questions.forEach((q) => {
+    q.question_id = crypto.randomUUID();
+    if (q.question_type == "checkbox" || q.question_type == "radio") {
+      q.options!.forEach((opt) => (opt.option_id = crypto.randomUUID()));
+    }
+  });
+  return result.questions as CreateLectureQuestion[];
 }
