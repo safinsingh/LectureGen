@@ -216,6 +216,7 @@ export default function MDXTestPage() {
 
   const [currentSlide, setCurrentSlide] = useState(0);
   const [questionText, setQuestionText] = useState('');
+  const [isAnswerPanelMinimized, setIsAnswerPanelMinimized] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Use the new state machine hook
@@ -400,36 +401,62 @@ export default function MDXTestPage() {
 
       {/* Question/Answer Panel - Conditionally rendered */}
       {(lastAnswer || lastBackendQuestion) && (
-        <div className="bg-white border-t border-gray-300 p-4 max-h-48 overflow-y-auto">
-          {/* Last Answer from User Question */}
-          {lastAnswer && (
-            <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-              <h4 className="font-semibold text-green-900 text-sm mb-1">
-                {lastAnswer.partial_lecture ? 'Lecture Regenerated:' : 'Answer:'}
-              </h4>
-              <p className="text-green-800 text-sm">{lastAnswer.response.response}</p>
-              {lastAnswer.partial_lecture && (
-                <div className="mt-3 p-2 bg-green-100 rounded text-xs text-green-700">
-                  <p className="font-semibold mb-1">✨ Slides have been regenerated!</p>
-                  <p>
-                    Added {lastAnswer.partial_lecture.slides.length} new slide{lastAnswer.partial_lecture.slides.length !== 1 ? 's' : ''} starting from slide {lastAnswer.partial_lecture.from_slide + 1}.
-                    The lecture has been updated based on your question.
+        <div className="bg-white border-t border-gray-300">
+          {/* Header with minimize button */}
+          <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-200">
+            <h3 className="text-sm font-semibold text-gray-700">AI Response</h3>
+            <button
+              onClick={() => setIsAnswerPanelMinimized(!isAnswerPanelMinimized)}
+              className="p-1 hover:bg-gray-200 rounded transition-colors"
+              aria-label={isAnswerPanelMinimized ? 'Expand response' : 'Minimize response'}
+              title={isAnswerPanelMinimized ? 'Expand response' : 'Minimize response'}
+            >
+              <svg
+                className="w-5 h-5 text-gray-600 transition-transform"
+                style={{ transform: isAnswerPanelMinimized ? 'rotate(180deg)' : 'rotate(0deg)' }}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Panel content - conditionally shown */}
+          {!isAnswerPanelMinimized && (
+            <div className="p-4 max-h-48 overflow-y-auto">
+              {/* Last Answer from User Question */}
+              {lastAnswer && (
+                <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <h4 className="font-semibold text-green-900 text-sm mb-1">
+                    {lastAnswer.partial_lecture ? 'Lecture Regenerated:' : 'Answer:'}
+                  </h4>
+                  <p className="text-green-800 text-sm">{lastAnswer.response.response}</p>
+                  {lastAnswer.partial_lecture && (
+                    <div className="mt-3 p-2 bg-green-100 rounded text-xs text-green-700">
+                      <p className="font-semibold mb-1">✨ Slides have been regenerated!</p>
+                      <p>
+                        Added {lastAnswer.partial_lecture.slides.length} new slide{lastAnswer.partial_lecture.slides.length !== 1 ? 's' : ''} starting from slide {lastAnswer.partial_lecture.from_slide + 1}.
+                        The lecture has been updated based on your question.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Backend Question */}
+              {lastBackendQuestion && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h4 className="font-semibold text-blue-900 text-sm mb-1">
+                    Check-in Question (Slide {lastBackendQuestion.current_slide + 1}):
+                  </h4>
+                  <p className="text-blue-800 text-sm mb-2">{lastBackendQuestion.question}</p>
+                  <p className="text-xs text-blue-600">
+                    <strong>Your answer:</strong> {lastBackendQuestion.answer}
                   </p>
                 </div>
               )}
-            </div>
-          )}
-
-          {/* Backend Question */}
-          {lastBackendQuestion && (
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <h4 className="font-semibold text-blue-900 text-sm mb-1">
-                Check-in Question (Slide {lastBackendQuestion.current_slide + 1}):
-              </h4>
-              <p className="text-blue-800 text-sm mb-2">{lastBackendQuestion.question}</p>
-              <p className="text-xs text-blue-600">
-                <strong>Your answer:</strong> {lastBackendQuestion.answer}
-              </p>
             </div>
           )}
         </div>

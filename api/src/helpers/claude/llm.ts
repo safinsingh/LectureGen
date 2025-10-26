@@ -54,15 +54,23 @@ export class LLM {
       throw new Error("LLM response did not contain a tool_use block");
     }
 
+    // Log the raw LLM response before validation
+    console.log("[LLM] Raw response before validation:", JSON.stringify(contentBlock.input, null, 2));
+
     const result = schema.safeParse(contentBlock.input);
 
     if (!result.success) {
+      console.error("[LLM] Schema validation failed!");
+      console.error("[LLM] Raw input that failed:", JSON.stringify(contentBlock.input, null, 2));
+      console.error("[LLM] Validation errors:", JSON.stringify(z.treeifyError(result.error), null, 2));
+
       throw new Error(
         "LLM response failed schema validation: " +
           JSON.stringify(z.treeifyError(result.error), null, 2)
       );
     }
 
+    console.log("[LLM] Schema validation successful");
     return result.data as z.infer<T>;
   }
 
