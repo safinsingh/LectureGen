@@ -29,7 +29,7 @@ type LectureSlide = {
   image?: string; // url
 };
 
-type PartialSlide = Omit<LectureSlide,"transcript" | "voiceover">
+type PartialSlide = Omit<LectureSlide, "transcript" | "voiceover">;
 
 type Lecture = {
   version: number; // race condition: account for case where user sends new request before prev finishes
@@ -39,8 +39,6 @@ type Lecture = {
 };
 
 type User = {
-  user_id: Uuid;
-  auth: FirebaseStub | { username: string; password_hash: string };
   user_preferences: LecturePreferences;
   lectures: Lecture[]; // by lecture.id or just uuid[]
 };
@@ -85,8 +83,7 @@ type CreateLectureInitialResponse = {
 
 // 3. User requests that create lecture job commences, by providing answers to clarifying questions
 type CreateLectureMainRequest = {
-  user_id: Uuid;
-  lecture_id: Uuid;
+  lecture_id: string;
   answers: CreateLectureAnswer[];
 };
 
@@ -97,6 +94,26 @@ type CreateLectureMainResponse = {
   // service will update client when a request finishes
   /** status/heartbeat? */
 };
+
+type CreateLectureStatusUpdate =
+  | {
+      type: "completedAll";
+    }
+  | {
+      type: "completedOne";
+      // "transcript" includes slide transcript, title, md content
+      completed: "transcript";
+    }
+  | {
+      type: "completedOne";
+      completed: "images" | "tts" | "diagrams";
+      counter: number;
+    }
+  | {
+      type: "enumerated";
+      thing: "images" | "diagrams" | "tts";
+      total: number;
+    };
 
 // User interrupts lecture to request question (mid-lecture)
 type UserInitiatedQuestionRequest = {

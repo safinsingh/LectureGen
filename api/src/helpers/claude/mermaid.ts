@@ -1,13 +1,14 @@
 import * as z from "zod";
-import { LLM } from './llm.js';
+import { LLM } from "./llm.js";
 
-// input needed to generate mermaid diagram 
+// input needed to generate mermaid diagram
 export type GenerateMermaidRequest = {
-  diagram_type: string;
+  type: string;
   extended_description: string;
+  // slide_num: number; Sad face.
 };
 
-// output 
+// output
 export const ZGenerateMermaidResponse = z.object({
   mermaid_code: z.string(),
 });
@@ -18,22 +19,21 @@ export const ZGenerateMermaidResponse = z.object({
  * @param request - Request object containing transcript, diagram type, and description
  * @returns Mermaid code as string
  */
-export async function generateMermaidDiagram(
+export async function generateMermaidDiagrams(
   llm: LLM,
-  request: GenerateMermaidRequest
-): Promise<string> {
-  const { diagram_type, extended_description } = request;
-
+  request /*s*/ : GenerateMermaidRequest /*[]*/
+): Promise</*{ mermaid: string ; slide_number: string }*/ string> {
+  const { type, extended_description } = request;
   const PROMPT = `
 You are a Mermaid diagram expert. Generate Mermaid diagram code based on the following content:
 
-DIAGRAM TYPE: ${diagram_type}
+DIAGRAM TYPE: ${type}
 
 DIAGRAM DESCRIPTION:
 ${extended_description}
 
 Instructions:
-- Follow the diagram type specified: ${diagram_type}
+- Follow the diagram type specified: ${type}
 - Keep it simple and focused (max 6-8 nodes for flowcharts/diagrams)
 - Use concise, clear labels (2-4 words per node)
 - Return ONLY the raw Mermaid code
@@ -44,7 +44,13 @@ Instructions:
 Generate the Mermaid code and return it as a JSON object with a single field "mermaid_code" containing the diagram code as a string.
 `;
 
-  const response = await llm.sendMessage(PROMPT, ZGenerateMermaidResponse);
-
-  return response.mermaid_code.trim();
+  return llm
+    .sendMessage(/*sendBatch*/ PROMPT /*S*/, ZGenerateMermaidResponse)
+    .then(
+      (cs) =>
+        // cs.map((c) => ({
+        // slide_number: cs.id,
+        cs.mermaid_code.trim()
+      // }))
+    );
 }

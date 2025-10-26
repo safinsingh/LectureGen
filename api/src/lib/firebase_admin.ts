@@ -6,7 +6,7 @@ import {
   Firestore,
   getFirestore,
 } from "firebase-admin/firestore";
-import { Lecture, LecturePreferences } from "schema";
+import { Lecture, LecturePreferences, User } from "schema";
 
 const serviceAccount = {};
 
@@ -30,6 +30,11 @@ function typedDoc<T>(path: string): DocumentReference<T> {
 export const lecturesCollection = typedCollection<Lecture>("lectures");
 export function lectureDoc(id: string) {
   return typedDoc<Lecture>(`lectures/${id}`);
+}
+
+export const usersCollection = typedCollection<Lecture>("users");
+export function userDoc(uid: string) {
+  return typedDoc<User>(`users/${uid}`);
 }
 
 export async function create_lecture_stub(
