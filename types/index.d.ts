@@ -48,9 +48,9 @@ type User = {
 type ResponseError = { success: boolean; error?: string };
 
 // REQUEST HELPERS //
-type QOption = { text: string; option_id: Uuid };
+type QOption = { text: string; option_id: string };
 // diff types of questions
-type QStub<T> = T & { question: string; question_id: Uuid };
+type QStub<T> = T & { question: string; question_id: string };
 export type CreateLectureQuestion = QStub<
   | { question_type: "radio"; options: QOption[] }
   | { question_type: "checkbox"; options: QOption[] }
@@ -126,32 +126,4 @@ type CreateLectureStatusUpdate =
 //   slide: number;
 //   question: string;
 // };
-
-// 2 diff lecture responses
-// Case 1: no need for additional slides, too big of question prompt to start new lecture
-// Case 2: only requires a few slide diff -> text + lecture
-// Backend responds to question (mid-lecture)
-type BackendQuestionResponse = (
-  | { answer: string; lecture: Lecture }
-  | { answer: string }
-) &
-  ResponseError;
-
-// Backend requests check-in question (mid-lecture)
-// Take into account diff users access same lecture
-type BackendInitiatedQuestionRequest = {
-  lecture_id: Uuid;
-  lecture_version: number;
-  slide: number;
-  question: string;
-  user_answer: string;
-};
-
-// User responds to check-in question
-type UserQuestionResponse = {
-  user_id: Uuid;
-  answer: string;
-  lecture_id: Uuid;
-};
-
-type LectureMessage = Omit<Lecture, "allowed_users">;
+//
