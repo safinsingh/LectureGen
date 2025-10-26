@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { Slide } from '@/components/slides/Slide';
 import { useSearchParams } from 'next/navigation';
 import { getBackendEndpoint } from '@/lib/env';
-import type { Lecture } from 'schema';
+import type { Lecture, LectureSlide } from 'schema';
 
 export default function MDXTestPage() {
   const searchParams = useSearchParams();
@@ -93,7 +93,7 @@ export default function MDXTestPage() {
                 version: response.lecture.version,
                 slideCount: response.lecture.slides?.length,
                 permittedUsers: response.lecture.permitted_users,
-                slides: response.lecture.slides?.map((slide, idx) => ({
+                slides: response.lecture.slides?.map((slide: LectureSlide, idx: number) => ({
                   index: idx,
                   title: slide.title,
                   hasContent: !!slide.content,
@@ -278,7 +278,7 @@ export default function MDXTestPage() {
 
           {/* Slide Indicators */}
           <div className="flex items-center gap-2">
-            {lecture.slides.map((_, index) => (
+            {lecture.slides.map((_: LectureSlide, index: number) => (
               <button
                 key={index}
                 onClick={() => goToSlide(index)}
