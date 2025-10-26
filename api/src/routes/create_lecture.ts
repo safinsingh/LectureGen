@@ -361,6 +361,81 @@ export const create_lecture_main: WebsocketHandler = async (ws, req) => {
 
   const assetGenerationStart = Date.now();
 
+  const diagramTasks = ts
+    .map((s, sidx) => ({ s, sidx }))
+    .filter(({ s }) => s.diagram !== undefined)
+    .map(({ s, sidx }) =>
+      generateMermaidDiagrams(llm, s.diagram!).then((dg) => {
+        lec.slides![sidx].diagram = dg;
+        const currentCount = ++completedDiagramCount;
+        req.log.info({
+          lecture_id,
+          slide_index: sidx,
+          diagram_number: currentCount,
+          total_diagrams: diagramCount,
+        }, '[LectureGen] Diagram generated');
+        ws.send(
+          JSON.stringify({
+            type: "completedOne",
+            completed: "diagrams",
+            counter: currentCount,
+          } satisfies CreateLectureStatusUpdate)
+        );
+      })
+    );
+
+  // LiveKit image generation currently allows up to 5 concurrent streams.
+  // Use a simple limiter to stay within the platform constraints.
+  const imageConcurrencyLimit = createLimiter(5);
+
+  const imageTasks = ts
+    .map((s, sidx) => ({ s, sidx }))
+    .filter(({ s }) => s.image !== undefined)
+    .map(({ s, sidx }) =>
+      imageConcurrencyLimit(async () => {
+        const img = await getImageForKeyword(
+          s.image!.search_term,
+          s.image!.extended_description
+        );
+        lec.slides![sidx].image = img;
+        const currentCount = ++completedImageCount;
+        req.log.info({
+          lecture_id,
+          slide_index: sidx,
+          search_term: s.image!.search_term,
+          image_number: currentCount,
+          total_images: imageCount,
+        }, '[LectureGen] Image fetched');
+        ws.send(
+          JSON.stringify({
+            type: "completedOne",
+            completed: "images",
+            counter: currentCount,
+          } satisfies CreateLectureStatusUpdate)
+        );
+      })
+    );
+
+  const voiceoverTasks = ts.map((s, sidx) =>
+    generateAvatarSpeech(s.transcript).then((speech) => {
+      lec.slides![sidx].voiceover = speech.audioUrl;
+      const currentCount = ++completedAudioCount;
+      req.log.info({
+        lecture_id,
+        slide_index: sidx,
+        audio_number: currentCount,
+        total_audio: ttsCount,
+      }, '[LectureGen] Voiceover generated');
+      ws.send(
+        JSON.stringify({
+          type: "completedOne",
+          completed: "tts",
+          counter: currentCount,
+        } satisfies CreateLectureStatusUpdate)
+      );
+    })
+  );
+
   await Promise.all([
     // ALL DA MERMAID DIAGS
     //
@@ -388,76 +463,11 @@ export const create_lecture_main: WebsocketHandler = async (ws, req) => {
     //   );
     // }),
 
-    ...ts
-      .map((s, sidx) => ({ s, sidx }))
-      .filter(({ s }) => s.diagram !== undefined)
-      .map(({ s, sidx }) =>
-        generateMermaidDiagrams(llm, s.diagram!).then((dg) => {
-          lec.slides![sidx].diagram = dg;
-          const currentCount = ++completedDiagramCount;
-          req.log.info({
-            lecture_id,
-            slide_index: sidx,
-            diagram_number: currentCount,
-            total_diagrams: diagramCount,
-          }, '[LectureGen] Diagram generated');
-          ws.send(
-            JSON.stringify({
-              type: "completedOne",
-              completed: "diagrams",
-              counter: currentCount,
-            } satisfies CreateLectureStatusUpdate)
-          );
-        })
-      ),
-
+    ...diagramTasks,
     // ALL DA IMAGES
-    ...ts
-      .map((s, sidx) => ({ s, sidx }))
-      .filter(({ s }) => s.image !== undefined)
-      .map(({ s, sidx }) =>
-        getImageForKeyword(
-          s.image!.search_term,
-          s.image!.extended_description
-        ).then((img) => {
-          lec.slides![sidx].image = img;
-          const currentCount = ++completedImageCount;
-          req.log.info({
-            lecture_id,
-            slide_index: sidx,
-            search_term: s.image!.search_term,
-            image_number: currentCount,
-            total_images: imageCount,
-          }, '[LectureGen] Image fetched');
-          ws.send(
-            JSON.stringify({
-              type: "completedOne",
-              completed: "images",
-              counter: currentCount,
-            } satisfies CreateLectureStatusUpdate)
-          );
-        })
-      ),
+    ...imageTasks,
     // ALL DA VOICEOVERS
-    ...ts.map((s, sidx) =>
-      generateAvatarSpeech(s.transcript).then((speech) => {
-        lec.slides![sidx].voiceover = speech.audioUrl;
-        const currentCount = ++completedAudioCount;
-        req.log.info({
-          lecture_id,
-          slide_index: sidx,
-          audio_number: currentCount,
-          total_audio: ttsCount,
-        }, '[LectureGen] Voiceover generated');
-        ws.send(
-          JSON.stringify({
-            type: "completedOne",
-            completed: "tts",
-            counter: currentCount,
-          } satisfies CreateLectureStatusUpdate)
-        );
-      })
-    ),
+    ...voiceoverTasks,
   ]);
 
   const assetGenerationDuration = Date.now() - assetGenerationStart;
@@ -525,4 +535,34 @@ async function writeLectureDebugSnapshot(
       error
     );
   }
+}
+
+function createLimiter(limit: number) {
+  let active = 0;
+  const queue: Array<() => void> = [];
+
+  const next = () => {
+    active = Math.max(active - 1, 0);
+    const task = queue.shift();
+    if (task) {
+      task();
+    }
+  };
+
+  return <T>(task: () => Promise<T>) =>
+    new Promise<T>((resolve, reject) => {
+      const run = () => {
+        active += 1;
+        task()
+          .then(resolve)
+          .catch(reject)
+          .finally(next);
+      };
+
+      if (active < limit) {
+        run();
+      } else {
+        queue.push(run);
+      }
+    });
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { CreateLectureQuestion, CreateLectureStatusUpdate, CreateLectureAnswer } from "schema";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -24,6 +24,16 @@ type StoredConfig = {
   createdAt: string;
 };
 
+type AssetKey = "images" | "diagrams" | "tts";
+
+const ASSET_LABELS: Record<AssetKey, string> = {
+  images: "Images",
+  diagrams: "Diagrams",
+  tts: "Voiceovers",
+};
+
+const ASSET_ORDER: AssetKey[] = ["images", "diagrams", "tts"];
+
 const logger = createLogger('LectureGen Progress');
 
 export default function LectureProgressPage() {
@@ -38,8 +48,16 @@ export default function LectureProgressPage() {
 
   // Progress tracking state
   const [transcriptComplete, setTranscriptComplete] = useState(false);
-  const [totalCounts, setTotalCounts] = useState({ images: 0, diagrams: 0, tts: 0 });
-  const [progress, setProgress] = useState({ images: 0, diagrams: 0, tts: 0 });
+  const [totalCounts, setTotalCounts] = useState<Record<AssetKey, number | null>>({
+    images: null,
+    diagrams: null,
+    tts: null,
+  });
+  const [progress, setProgress] = useState<Record<AssetKey, number>>({
+    images: 0,
+    diagrams: 0,
+    tts: 0,
+  });
 
   const headline = useMemo(() => {
     switch (status) {
@@ -211,8 +229,19 @@ export default function LectureProgressPage() {
                 if (data.completed === "transcript") {
                   setTranscriptComplete(true);
                 } else {
-                  // Update progress counter for images/diagrams/tts
-                  setProgress(prev => ({ ...prev, [data.completed]: data.counter }));
+                  if (typeof data.counter === "number") {
+                    // Update progress counter for images/diagrams/tts
+                    setProgress(prev => ({
+                      ...prev,
+                      [data.completed]:
+                        Math.max(prev[data.completed], data.counter),
+                    }));
+                  } else {
+                    logger.warn('Missing counter for non-transcript completion', {
+                      completed: data.completed,
+                      data,
+                    });
+                  }
                 }
                 break;
 
@@ -222,7 +251,10 @@ export default function LectureProgressPage() {
                   total: data.total,
                 });
                 // Set total counts for images/diagrams/tts
-                setTotalCounts(prev => ({ ...prev, [data.thing]: data.total }));
+                setTotalCounts(prev => ({
+                  ...prev,
+                  [data.thing]: data.total,
+                }));
                 break;
 
               case "completedAll":
@@ -299,6 +331,129 @@ export default function LectureProgressPage() {
     };
   }, [configKey, getIdToken]);
 
+  const renderAssetProgress = (key: AssetKey) => {
+    const total = totalCounts[key];
+    const completed = progress[key];
+    const hasTotal = typeof total === "number";
+    const requiresWork = hasTotal && total > 0;
+    const percent = requiresWork
+      ? Math.min((completed / total) * 100, 100)
+      : 0;
+    const isComplete =
+      status === "completed" &&
+      hasTotal &&
+      (total === 0 || completed >= total);
+
+    let indicator: ReactNode;
+    if (isComplete) {
+      indicator = (
+        <svg
+          className="h-5 w-5 text-green-600"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M5 13l4 4L19 7"
+          />
+        </svg>
+      );
+    } else if (!hasTotal) {
+      indicator = (
+        <svg
+          className="h-5 w-5 animate-spin text-slate-400"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+          ></circle>
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          ></path>
+        </svg>
+      );
+    } else if (requiresWork) {
+      indicator = (
+        <span className="text-xs font-medium text-slate-500">
+          {completed} / {total}
+        </span>
+      );
+    } else {
+      indicator = (
+        <span className="text-xs font-medium text-slate-500">
+          No items required
+        </span>
+      );
+    }
+
+    const spinnerActive =
+      status === "connected" &&
+      !isComplete &&
+      (!hasTotal || (requiresWork && completed < total));
+
+    const spinnerBox = spinnerActive ? (
+      <div
+        aria-hidden
+        className="h-5 w-5 rounded-md border-2 border-indigo-200 border-r-indigo-500 border-t-indigo-500 animate-spin"
+      />
+    ) : (
+      <div
+        aria-hidden
+        className="h-5 w-5 rounded-md border border-slate-200 bg-slate-100"
+      />
+    );
+
+    let progressBar: ReactNode;
+    if (!hasTotal) {
+      progressBar = (
+        <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+          <div className="h-full w-1/3 animate-pulse rounded-full bg-slate-200" />
+        </div>
+      );
+    } else if (requiresWork) {
+      progressBar = (
+        <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+          <div
+            className="h-full rounded-full bg-indigo-500 transition-[width] duration-300 ease-out"
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+      );
+    } else {
+      progressBar = (
+        <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+          <div className="h-full w-full rounded-full bg-slate-200" />
+        </div>
+      );
+    }
+
+    return (
+      <div key={key} className="space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-slate-700">
+            {ASSET_LABELS[key]}
+          </span>
+          {indicator}
+        </div>
+        <div className="flex items-center gap-3">
+          {spinnerBox}
+          <div className="flex-1">{progressBar}</div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="mx-auto flex min-h-[60vh] w-full max-w-4xl flex-col items-start justify-center gap-8 px-6 py-16">
       <div className="flex flex-col gap-3">
@@ -337,50 +492,7 @@ export default function LectureProgressPage() {
             )}
           </div>
 
-          {/* Images */}
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-slate-700">Images</span>
-            {totalCounts.images > 0 && progress.images >= totalCounts.images ? (
-              <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            ) : (
-              <svg className="h-6 w-6 animate-spin text-slate-400" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            )}
-          </div>
-
-          {/* Diagrams */}
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-slate-700">Diagrams</span>
-            {totalCounts.diagrams > 0 && progress.diagrams >= totalCounts.diagrams ? (
-              <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            ) : (
-              <svg className="h-6 w-6 animate-spin text-slate-400" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            )}
-          </div>
-
-          {/* Voiceovers */}
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-slate-700">Voiceovers</span>
-            {totalCounts.tts > 0 && progress.tts >= totalCounts.tts ? (
-              <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            ) : (
-              <svg className="h-6 w-6 animate-spin text-slate-400" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            )}
-          </div>
+          {ASSET_ORDER.map(renderAssetProgress)}
         </div>
       )}
 
