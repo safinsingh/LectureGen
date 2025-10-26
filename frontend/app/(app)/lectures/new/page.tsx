@@ -166,6 +166,7 @@ export default function LectureConfiguratorPage() {
   const [lectureStubId, setLectureStubId] = useState<string | null>(null);
   const [clarifyingFiles, setClarifyingFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   const completionRatio = useMemo(() => {
     const baseTotal = Object.keys(answers).length;
@@ -195,9 +196,8 @@ export default function LectureConfiguratorPage() {
     setAnswers((prev) => ({ ...prev, [id]: value }));
   };
 
-  const handleFileSelection = (event: ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = Array.from(event.target.files ?? []);
-    if (selectedFiles.length === 0) {
+  const addFiles = (files: File[]) => {
+    if (files.length === 0) {
       return;
     }
 
@@ -209,7 +209,7 @@ export default function LectureConfiguratorPage() {
       );
       const merged = [...prev];
 
-      for (const file of selectedFiles) {
+      for (const file of files) {
         const key = `${file.name}-${file.size}-${file.lastModified}`;
         if (!existingKeys.has(key)) {
           merged.push(file);
@@ -219,8 +219,38 @@ export default function LectureConfiguratorPage() {
 
       return merged;
     });
+  };
 
+  const handleFileSelection = (event: ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(event.target.files ?? []);
+    addFiles(selectedFiles);
     event.target.value = "";
+  };
+
+  const handleDragEnter = (event: React.DragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (event: React.DragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDragOver = (event: React.DragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
+  const handleDrop = (event: React.DragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(false);
+
+    const droppedFiles = Array.from(event.dataTransfer.files);
+    addFiles(droppedFiles);
   };
 
   const removeFileAtIndex = (index: number) => {
@@ -489,8 +519,8 @@ export default function LectureConfiguratorPage() {
                     Reference files
                   </p>
                   <p className="mt-1 text-xs text-slate-500">
-                    Upload PDFs, slides, docs, or code snippets to give the duo
-                    more context.
+                    Click or drag files to upload PDFs, slides, docs, or code
+                    snippets.
                   </p>
                 </div>
                 {clarifyingFiles.length > 0 ? (
@@ -500,37 +530,71 @@ export default function LectureConfiguratorPage() {
                 ) : null}
               </div>
 
-              {clarifyingFiles.length === 0 ? (
-                <div className="mt-5 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
-                  No files attached yet. Click “Add files” to include briefs,
-                  slides, or notes.
-                </div>
-              ) : (
-                <ul className="mt-5 space-y-3 text-sm text-slate-600">
-                  {clarifyingFiles.map((file, index) => (
-                    <li
-                      key={`${file.name}-${file.size}-${file.lastModified}`}
-                      className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-2"
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                onDragEnter={handleDragEnter}
+                onDragLeave={handleDragLeave}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+                className={`mt-5 cursor-pointer rounded-xl border border-dashed px-4 py-6 transition ${
+                  isDragging
+                    ? "border-slate-900 bg-slate-100"
+                    : "border-slate-300 bg-slate-50 hover:border-slate-400 hover:bg-slate-100"
+                }`}
+              >
+                {clarifyingFiles.length === 0 ? (
+                  <div className="text-center text-sm text-slate-500">
+                    <svg
+                      className="mx-auto h-8 w-8 text-slate-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
                     >
-                      <div>
-                        <p className="font-medium text-slate-900">
-                          {file.name}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {(file.size / 1024).toFixed(1)} KB
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeFileAtIndex(index)}
-                        className="text-xs font-semibold text-red-500 transition hover:text-red-600"
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                      />
+                    </svg>
+                    <p className="mt-2">
+                      <span className="font-semibold text-slate-700">
+                        Click to upload
+                      </span>{" "}
+                      or drag and drop
+                    </p>
+                    <p className="mt-1 text-xs text-slate-400">
+                      PDFs, slides, docs, or code snippets
+                    </p>
+                  </div>
+                ) : (
+                  <ul className="space-y-3 text-sm text-slate-600">
+                    {clarifyingFiles.map((file, index) => (
+                      <li
+                        key={`${file.name}-${file.size}-${file.lastModified}`}
+                        className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-2"
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        Remove
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
+                        <div>
+                          <p className="font-medium text-slate-900">
+                            {file.name}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {(file.size / 1024).toFixed(1)} KB
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeFileAtIndex(index)}
+                          className="text-xs font-semibold text-red-500 transition hover:text-red-600"
+                        >
+                          Remove
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
           </div>
         </section>
