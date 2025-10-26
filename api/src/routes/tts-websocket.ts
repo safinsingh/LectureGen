@@ -40,7 +40,7 @@ export function createTtsWebsocketHandler(): WebsocketHandler {
 
     let processing = false;
 
-    socket.on('message', async (rawMessage) => {
+    socket.on('message', async (rawMessage: Buffer | string) => {
       // eslint-disable-next-line no-console
       console.log('[TTS-WS] Received message:', {
         type: typeof rawMessage,
