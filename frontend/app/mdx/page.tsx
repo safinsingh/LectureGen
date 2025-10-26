@@ -195,6 +195,7 @@ export default function MDXTestPage() {
 
   const [currentSlide, setCurrentSlide] = useState(0);
   const [questionText, setQuestionText] = useState('');
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Use the new state machine hook
   const { phase, lecture, lastAnswer, lastBackendQuestion, askQuestion } =
@@ -224,6 +225,48 @@ export default function MDXTestPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentSlide, lecture]);
 
+  useEffect(() => {
+    if (!lecture) {
+      return;
+    }
+
+    const slide = lecture.slides[currentSlide];
+    const audioEl = audioRef.current;
+
+    if (!audioEl) {
+      return;
+    }
+
+    const handleEnded = () => {
+      setCurrentSlide((prev) => {
+        const lastIndex = lecture.slides.length - 1;
+        return prev < lastIndex ? prev + 1 : prev;
+      });
+    };
+
+    audioEl.addEventListener('ended', handleEnded);
+
+    if (slide?.audio_transcription_link) {
+      audioEl.src = slide.audio_transcription_link;
+      audioEl.currentTime = 0;
+
+      const playPromise = audioEl.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((error) => {
+          console.warn('[MDXTestPage] Autoplay prevented:', error);
+        });
+      }
+    } else {
+      audioEl.pause();
+      audioEl.removeAttribute('src');
+      audioEl.load();
+    }
+
+    return () => {
+      audioEl.pause();
+      audioEl.removeEventListener('ended', handleEnded);
+    };
+  }, [lecture, currentSlide]);
   const nextSlide = () => {
     if (lecture && currentSlide < lecture.slides.length - 1) {
       setCurrentSlide(currentSlide + 1);
@@ -287,6 +330,9 @@ export default function MDXTestPage() {
       </div>
     );
   }
+
+  const currentSlideData = lecture.slides[currentSlide];
+  const hasAudio = Boolean(currentSlideData.audio_transcription_link);
 
   const handleAskQuestion = () => {
     if (questionText.trim() && phase === 'ready') {
@@ -362,6 +408,31 @@ export default function MDXTestPage() {
           )}
         </div>
       )}
+
+      {/* Audio Playback */}
+      <div className="bg-white border-t border-gray-300 px-6 py-4">
+        <div className="max-w-6xl mx-auto flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-sm text-gray-600">
+            <p className="uppercase tracking-wide text-xs font-semibold text-gray-500">
+              Slide narration
+            </p>
+            <p className="font-medium text-gray-900">
+              Slide {currentSlide + 1}: {currentSlideData.title}
+            </p>
+            <p className="text-xs text-gray-500">
+              {hasAudio
+                ? 'Auto-playing audio narration. Advance manually at any time.'
+                : 'No audio narration available for this slide.'}
+            </p>
+          </div>
+          <audio
+            ref={audioRef}
+            controls
+            className="w-full sm:w-auto"
+            aria-label="Slide audio narration"
+          />
+        </div>
+      </div>
 
       {/* Question Input - Fixed above navigation */}
       {phase === 'ready' && (

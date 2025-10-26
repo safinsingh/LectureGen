@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { CreateLectureQuestion, CreateLectureStatusUpdate, CreateLectureAnswer } from "schema";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -45,6 +45,8 @@ export default function LectureProgressPage() {
   const [status, setStatus] = useState<JobStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [lectureId, setLectureId] = useState<string | null>(null);
+  const redirectTimeoutRef = useRef<number | null>(null);
+  const hasRedirectedRef = useRef(false);
 
   // Progress tracking state
   const [transcriptComplete, setTranscriptComplete] = useState(false);
@@ -73,6 +75,24 @@ export default function LectureProgressPage() {
         return "Preparing lecture generation.";
     }
   }, [status]);
+
+  const manualRedirect = () => {
+    if (!lectureId) {
+      return;
+    }
+    const targetUrl = `/mdx?id=${encodeURIComponent(lectureId)}`;
+    try {
+      router.replace(targetUrl);
+    } catch (navError) {
+      logger.error('Manual navigation failed, hard reloading', {
+        error: navError,
+        targetUrl,
+      });
+      if (typeof window !== "undefined") {
+        window.location.href = targetUrl;
+      }
+    }
+  };
 
   useEffect(() => {
     logger.info('Page loaded', {
@@ -270,11 +290,49 @@ export default function LectureProgressPage() {
                     configKey,
                   });
                 }
-                // Redirect to lecture display page
-                setTimeout(() => {
-                  logger.info('Redirecting to lecture display page');
-                  router.push(`/lectures/${parsedConfig.lectureStubId}`);
-                }, 1500);
+                if (!parsedConfig.lectureStubId) {
+                  logger.error('Missing lectureStubId on completion, cannot redirect', {
+                    parsedConfig,
+                  });
+                  setError(
+                    "We finished generating your lecture, but couldn't locate it. Please return to your dashboard.",
+                  );
+                  setStatus("error");
+                  break;
+                }
+
+                const targetUrl = `/mdx?id=${encodeURIComponent(parsedConfig.lectureStubId)}`;
+
+                const performRedirect = () => {
+                  if (hasRedirectedRef.current) {
+                    return;
+                  }
+                  hasRedirectedRef.current = true;
+
+                  logger.info('Redirecting to MDX lecture viewer', {
+                    targetUrl,
+                  });
+
+                  try {
+                    router.replace(targetUrl);
+                  } catch (navError) {
+                    logger.error('Client navigation failed, falling back to hard redirect', {
+                      error: navError,
+                      targetUrl,
+                    });
+                    if (typeof window !== "undefined") {
+                      window.location.href = targetUrl;
+                    }
+                  }
+                };
+
+                if (typeof window !== "undefined") {
+                  redirectTimeoutRef.current = window.setTimeout(() => {
+                    performRedirect();
+                  }, 1500);
+                } else {
+                  performRedirect();
+                }
                 break;
             }
           } catch (err) {
@@ -322,6 +380,10 @@ export default function LectureProgressPage() {
       });
       if (socket) {
         socket.close();
+      }
+      if (redirectTimeoutRef.current !== null && typeof window !== "undefined") {
+        window.clearTimeout(redirectTimeoutRef.current);
+        redirectTimeoutRef.current = null;
       }
       // Note: We intentionally do NOT remove from sessionStorage here
       // because React Strict Mode runs effects twice in development,
@@ -497,14 +559,26 @@ export default function LectureProgressPage() {
       )}
 
       {status === "completed" && (
-        <div className="flex items-center gap-3 rounded-2xl border border-green-200 bg-green-50 p-6">
-          <svg className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
-          <div>
-            <p className="font-semibold text-green-900">Lecture complete!</p>
-            <p className="text-sm text-green-700">Redirecting you to your lecture...</p>
+        <div className="flex flex-col gap-4 rounded-2xl border border-green-200 bg-green-50 p-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <svg className="mt-1 h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <div>
+              <p className="font-semibold text-green-900">Lecture complete!</p>
+              <p className="text-sm text-green-700">
+                Redirecting you to your lecture. If nothing happens, jump there manually.
+              </p>
+            </div>
           </div>
+          <button
+            type="button"
+            onClick={manualRedirect}
+            disabled={!lectureId}
+            className="inline-flex items-center justify-center rounded-full border border-green-300 bg-green-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700 disabled:cursor-not-allowed disabled:border-green-200 disabled:bg-green-200 disabled:text-green-500"
+          >
+            Open lecture viewer
+          </button>
         </div>
       )}
 
