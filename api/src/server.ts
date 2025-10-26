@@ -1,3 +1,21 @@
+import { config } from "dotenv";
+import { resolve, dirname } from "path";
+import { fileURLToPath } from "url";
+
+// Get the directory of this file
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Load environment variables from root .env file (two levels up from dist/server.js)
+const envPath = resolve(__dirname, "../../.env");
+console.log(`[server] Loading .env from: ${envPath}`);
+const result = config({ path: envPath });
+if (result.error) {
+  console.error(`[server] Error loading .env:`, result.error);
+} else {
+  console.log(`[server] .env loaded successfully`);
+}
+
 import cors from "@fastify/cors";
 import websocketPlugin from "@fastify/websocket";
 import Fastify from "fastify";

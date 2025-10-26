@@ -1,9 +1,9 @@
-import { lectureDoc } from "../../lib/firebase_admin";
-import { LLM } from "./llm";
+import { lectureDoc } from "../../lib/firebase_admin.js";
+import { LLM } from "./llm.js";
 import { UserQuestionRequest, ZUserAnalyzeQuery } from "../../../../types/index.js";
 import { z } from "zod";
-import { ZGenerateTranscriptResponse } from "./transcript";
-import { ASSET_CACHE } from "../../lib/file_cache";
+import { ZGenerateTranscriptResponse } from "./transcript.js";
+import { ASSET_CACHE } from "../../lib/file_cache.js";
 
 // Wrap the discriminated union in an object so it converts to valid JSON schema
 const ZUserAnalyzeQueryWrapper = z.object({

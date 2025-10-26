@@ -1,10 +1,21 @@
 import GoogleImages from "google-images";
 
-// Initialize Google Images client
-const googleClient = new GoogleImages(
-  process.env.GOOGLE_CSE_ID!,
-  process.env.GOOGLE_API_KEY!
-);
+// Lazy initialization
+let googleClient: GoogleImages | null = null;
+
+function getClient(): GoogleImages {
+  if (!googleClient) {
+    const cseId = process.env.GOOGLE_CSE_ID;
+    const apiKey = process.env.GOOGLE_API_KEY;
+
+    if (!cseId || !apiKey) {
+      throw new Error("Google Images requires GOOGLE_CSE_ID and GOOGLE_API_KEY environment variables");
+    }
+
+    googleClient = new GoogleImages(cseId, apiKey);
+  }
+  return googleClient;
+}
 
 /**
  * Takes a keyword and optional description, returns the top image URL from Google Images
@@ -16,7 +27,7 @@ export async function getImageForKeyword(keyword: string, description: string): 
   // Combine keyword with description for more accurate search
   const searchQuery = description ? `${keyword} ${description}` : keyword;
 
-  const results = await googleClient.search(searchQuery, { size: 'large' });
+  const results = await getClient().search(searchQuery, { size: 'large' });
 
   if (!results || results.length === 0) {
     throw new Error(`No images found for: ${keyword}`);

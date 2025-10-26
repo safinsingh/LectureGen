@@ -3,8 +3,8 @@ import {
   CreateLectureUploadSchema,
   LecturePreferencesSchema,
 } from "../schemas/create-lecture.js";
-import { buildFileUploadsForLLM } from "../helpers/file";
-import { ASSET_CACHE } from "../lib/file_cache";
+import { buildFileUploadsForLLM } from "../helpers/file/index.js";
+import { ASSET_CACHE } from "../lib/file_cache.js";
 import * as z from "zod";
 import {
   get_user_profile,
@@ -12,7 +12,7 @@ import {
   userProfileDoc,
   lectureDoc,
   admin,
-} from "../lib/firebase_admin";
+} from "../lib/firebase_admin.js";
 import {
   LecturePreferences,
   CreateLectureInitialResponse,
@@ -24,17 +24,17 @@ import {
 import {
   ZGenerateClarifyingQuestionsRequest,
   generate_clarifying_questions,
-} from "../helpers/claude/clarifying_questions";
-import { llm, haikuLlm } from "../lib/mouse";
+} from "../helpers/claude/clarifying_questions.js";
+import { llm, haikuLlm } from "../lib/mouse.js";
 import { WebsocketHandler } from "@fastify/websocket";
-import { generate_transcript } from "../helpers/claude/transcript";
-import { generateMermaidDiagrams, type GenerateMermaidRequest } from "../helpers/claude/mermaid";
-import { getImageForKeyword } from "../helpers/image";
-import { generateAvatarSpeech } from "../helpers/livekit/tts";
-import { stripUndefinedDeep } from "../lib/firestore_sanitize";
+import { generate_transcript } from "../helpers/claude/transcript.js";
+import { generateMermaidDiagrams, type GenerateMermaidRequest } from "../helpers/claude/mermaid.js";
+import { getImageForKeyword } from "../helpers/image/index.js";
+import { generateAvatarSpeech } from "../helpers/livekit/tts.js";
+import { stripUndefinedDeep } from "../lib/firestore_sanitize.js";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { uploadVoiceoverDataUrl } from "../helpers/storage/voiceovers";
+import { uploadVoiceoverDataUrl } from "../helpers/storage/voiceovers.js";
 
 export const create_lecture_initial: RouteHandler = async (req, res) => {
   const isMultipart =

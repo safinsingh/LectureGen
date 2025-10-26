@@ -1,6 +1,6 @@
 import { RouteHandler } from "fastify";
 import { DecodedIdToken } from "firebase-admin/auth";
-import { get_user_profile, lectureDoc } from "../lib/firebase_admin";
+import { get_user_profile, lectureDoc } from "../lib/firebase_admin.js";
 
 declare module "fastify" {
   interface FastifyRequest {

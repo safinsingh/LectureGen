@@ -1,7 +1,7 @@
 import { WebsocketHandler } from "@fastify/websocket";
 import { z } from "zod";
-import { lectureDoc } from "../lib/firebase_admin";
-import { llm } from "../lib/mouse";
+import { lectureDoc } from "../lib/firebase_admin.js";
+import { llm } from "../lib/mouse.js";
 import {
   ZInboundMessage,
   ZGetLectureResponse,
@@ -14,13 +14,13 @@ import {
   InboundMessage,
   PartialLecture,
 } from "../../../types/index.js";
-import { generate_user_question_response } from "../helpers/claude/questions";
-import { regenerate_slides_from_question } from "../helpers/claude/regenerate_slides";
-import { generateMermaidDiagrams } from "../helpers/claude/mermaid";
-import { getImageForKeyword } from "../helpers/image";
-import { generateAvatarSpeech } from "../helpers/livekit/tts";
-import { uploadVoiceoverDataUrl } from "../helpers/storage/voiceovers";
-import { stripUndefinedDeep } from "../lib/firestore_sanitize";
+import { generate_user_question_response } from "../helpers/claude/questions.js";
+import { regenerate_slides_from_question } from "../helpers/claude/regenerate_slides.js";
+import { generateMermaidDiagrams } from "../helpers/claude/mermaid.js";
+import { getImageForKeyword } from "../helpers/image/index.js";
+import { generateAvatarSpeech } from "../helpers/livekit/tts.js";
+import { uploadVoiceoverDataUrl } from "../helpers/storage/voiceovers.js";
+import { stripUndefinedDeep } from "../lib/firestore_sanitize.js";
 import { LectureSlide } from "schema";
 
 type SessionState =
