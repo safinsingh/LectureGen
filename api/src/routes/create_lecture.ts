@@ -1,22 +1,30 @@
 import { RouteHandler } from "fastify";
-import { CreateLectureUploadSchema } from "schema/zod_types";
+import {
+  CreateLectureUploadSchema,
+  LecturePreferencesSchema,
+} from "../schemas/create-lecture.js";
 import { buildFileUploadsForLLM } from "../helpers/file";
 import { ASSET_CACHE } from "../lib/file_cache";
 import * as z from "zod";
 import {
+  get_user_profile,
   create_lecture_stub,
-  userDoc,
+  userProfileDoc,
   lectureDoc,
   admin,
 } from "../lib/firebase_admin";
 import {
+  LecturePreferences,
   CreateLectureInitialResponse,
   CreateLectureMainRequest,
   CreateLectureStatusUpdate,
   Lecture,
   LectureSlide,
 } from "schema";
-import { generate_clarifying_questions } from "../helpers/claude/clarifying_questions";
+import {
+  ZGenerateClarifyingQuestionsRequest,
+  generate_clarifying_questions,
+} from "../helpers/claude/clarifying_questions";
 import { llm } from "../lib/mouse";
 import { WebsocketHandler } from "@fastify/websocket";
 import { generate_transcript } from "../helpers/claude/transcript";
@@ -25,139 +33,177 @@ import { getImageForKeyword } from "../helpers/image";
 import { generateAvatarSpeech } from "../helpers/livekit/tts";
 
 export const create_lecture_initial: RouteHandler = async (req, res) => {
-  let lectureConfigRaw: unknown = undefined;
-  let lecturePrefsRaw: unknown = undefined;
+  const isMultipart =
+    typeof req.isMultipart === "function" && req.isMultipart();
 
-  const fileParts: Array<{
-    filename: string;
-    mimetype: string;
-    file: NodeJS.ReadableStream;
-  }> = [];
+  let data: z.infer<typeof CreateLectureUploadSchema>;
 
-  // req.parts() is AsyncIterable<Multipart | MultipartFile>, where
-  // - MultipartFile has: file, filename, mimetype, fieldname, etc.
-  // - MultipartValue<T> has: value, fieldname, etc.
-  //
-  // We have to narrow manually.
+  if (isMultipart) {
+    let lectureConfigRaw: unknown = undefined;
+    let lecturePrefsRaw: unknown = undefined;
 
-  for await (const part of req.parts()) {
-    // FILE BRANCH
-    // Heuristic: file parts have .file (Readable stream) and .filename (string).
-    if ("file" in part && typeof part.file !== "undefined") {
-      // This is a file upload field
+    const fileParts: Array<{
+      filename: string;
+      mimetype: string;
+      file: NodeJS.ReadableStream;
+    }> = [];
 
-      if (part.fieldname === "files") {
-        fileParts.push({
-          filename: part.filename, // string
-          mimetype: part.mimetype, // string
-          file: part.file, // Readable stream
-        });
-      } else {
-        return res.code(400).send({
-          success: false,
-          error: `Unexpected file field '${part.fieldname}'`,
-        });
+    // req.parts() is AsyncIterable<Multipart | MultipartFile>, where
+    // - MultipartFile has: file, filename, mimetype, fieldname, etc.
+    // - MultipartValue<T> has: value, fieldname, etc.
+    // We have to narrow manually.
+
+    for await (const part of req.parts()) {
+      // FILE BRANCH
+      if ("file" in part && typeof part.file !== "undefined") {
+        if (part.fieldname === "files") {
+          fileParts.push({
+            filename: part.filename,
+            mimetype: part.mimetype,
+            file: part.file,
+          });
+        } else {
+          return res.code(400).send({
+            success: false,
+            error: `Unexpected file field '${part.fieldname}'`,
+          });
+        }
+
+        continue;
       }
 
-      continue;
-    }
+      // TEXT BRANCH
+      if ("value" in part) {
+        if (part.fieldname === "lecture_config") {
+          try {
+            lectureConfigRaw = JSON.parse(part.value as string);
+          } catch {
+            return res
+              .code(400)
+              .send({ error: "lecture_config is not valid JSON" });
+          }
+        } else if (part.fieldname === "lecture_preferences") {
+          try {
+            lecturePrefsRaw = JSON.parse(part.value as string);
+          } catch {
+            return res
+              .code(400)
+              .send({ error: "lecture_preferences is not valid JSON" });
+          }
+        } else if (part.fieldname === "files") {
+          return res.code(400).send({
+            success: false,
+            error:
+              "Expected 'files' to be file upload(s), not text. Got text field.",
+          });
+        } else {
+          return res.code(400).send({
+            success: false,
+            error: `Unexpected field '${part.fieldname}'`,
+          });
+        }
 
-    // TEXT BRANCH
-    // MultipartValue<T> has .value which is the string body of the field
-    if ("value" in part) {
-      if (part.fieldname === "lecture_config") {
-        try {
-          lectureConfigRaw = JSON.parse(part.value as string);
-        } catch {
-          return res
-            .code(400)
-            .send({ error: "lecture_config is not valid JSON" });
-        }
-      } else if (part.fieldname === "lecture_preferences") {
-        try {
-          lecturePrefsRaw = JSON.parse(part.value as string);
-        } catch {
-          return res
-            .code(400)
-            .send({ error: "lecture_preferences is not valid JSON" });
-        }
-      } else if (part.fieldname === "files") {
-        // If the client *accidentally* sends a text field also named "files"
-        // instead of a binary part, reject to keep the API strict.
-        return res.code(400).send({
-          success: false,
-          error:
-            "Expected 'files' to be file upload(s), not text. Got text field.",
-        });
-      } else {
-        return res.code(400).send({
-          success: false,
-          error: `Unexpected field '${part.fieldname}'`,
-        });
+        continue;
       }
 
-      continue;
+      return res.code(400).send({
+        success: false,
+        error: "Received multipart part of unknown type",
+      });
     }
 
-    // If we hit here, Fastify gave us something we didn't expect
-    return res.code(400).send({
+    const candidate = {
+      lecture_config: lectureConfigRaw,
+      lecture_preferences: lecturePrefsRaw,
+      files: fileParts.length > 0 ? fileParts : undefined,
+    };
+
+    const parsed = CreateLectureUploadSchema.safeParse(candidate);
+
+    if (!parsed.success) {
+      return res.code(400).send({
+        error: "Validation failed",
+        details: z.treeifyError(parsed.error),
+      });
+    }
+
+    data = parsed.data;
+  } else {
+    const body = req.body;
+
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return res.code(400).send({
+        error: "Expected JSON object body",
+      });
+    }
+
+    const bodyRecord = body as Record<string, unknown>;
+    const candidate = {
+      lecture_config: bodyRecord.lecture_config,
+      lecture_preferences: bodyRecord.lecture_preferences,
+      files: undefined,
+    };
+
+    const parsed = CreateLectureUploadSchema.safeParse(candidate);
+
+    if (!parsed.success) {
+      return res.code(400).send({
+        error: "Validation failed",
+        details: z.treeifyError(parsed.error),
+      });
+    }
+
+    data = parsed.data;
+  }
+
+  const user = req.user;
+
+  if (!user?.uid) {
+    req.log.warn(
+      { hasUser: Boolean(user) },
+      "Unauthorized create lecture attempt"
+    );
+    return res.code(401).send({
       success: false,
-      error: "Received multipart part of unknown type",
+      error: "Unauthorized",
     });
   }
 
-  // Build the candidate object for Zod validation
-  const candidate = {
-    lecture_config: lectureConfigRaw,
-    lecture_preferences: lecturePrefsRaw,
-    files: fileParts.length > 0 ? fileParts : undefined,
-  };
-
-  // Validate with Zod
-  const parsed = CreateLectureUploadSchema.safeParse(candidate);
-
-  if (!parsed.success) {
-    return res.code(400).send({
-      success: false,
-      error: "Validation failed: " + z.treeifyError(parsed.error),
-    });
-  }
-
-  const data = parsed.data;
-
-  // You can now trust `data`
-  // data.lecture_config.lecture_topic (string)
-  // data.lecture_preferences?.tone (enum or undefined)
-  // data.files?.[i].file (Readable stream)
-
-  const { uid } = req.user!;
-  const user_preferences = await userDoc(uid)
-    .get()
-    .then((mouse) => mouse.data()?.user_preferences);
-  if (!user_preferences) {
-    return res.code(400).send({
-      success: false,
-      error: "Invalid user",
-    });
-  }
-
+  const { uid } = user;
   const llmFiles = await buildFileUploadsForLLM(data.files);
-  const stub = await create_lecture_stub(uid, data.lecture_preferences);
 
-  const questions = await generate_clarifying_questions(llm, {
+  const DEFAULT_LECTURE_PREFERENCES: LecturePreferences =
+    LecturePreferencesSchema.parse({
+      lecture_length: "medium",
+      tone: "warm",
+      enable_questions: true,
+    });
+
+  // Fetch user profile to get saved preferences
+  const userProfile = await get_user_profile(uid);
+  const savedPreferences =
+    userProfile?.preferences ?? DEFAULT_LECTURE_PREFERENCES;
+
+  // Use lecture-specific preferences if provided, otherwise use saved/default preferences
+  const userPreferences = data.lecture_preferences ?? savedPreferences;
+
+  const clarifyingRequest = ZGenerateClarifyingQuestionsRequest.parse({
     topic: data.lecture_config.lecture_topic,
-    user_preferences,
+    user_preferences: userPreferences,
     custom_preferences: data.lecture_preferences,
   });
+
+  const stub = await create_lecture_stub(uid, userPreferences);
+  const questions = await generate_clarifying_questions(llm, clarifyingRequest);
+
   ASSET_CACHE.set(stub, {
     uid,
     file_uploads: llmFiles,
     custom_preferences: data.lecture_preferences,
     questions,
-    user_preferences,
+    user_preferences: userPreferences,
     lecture_topic: data.lecture_config.lecture_topic,
   });
-
   return res.code(200).send({
     lecture_id: stub,
     questions,
@@ -319,7 +365,7 @@ export const create_lecture_main: WebsocketHandler = async (ws, req) => {
 
   const ld = lectureDoc(lecture_id);
   await ld.set(lec as Lecture);
-  const ud = userDoc(user.uid);
+  const ud = userProfileDoc(user.uid);
   await ud.update({
     lectures: admin.firestore.FieldValue.arrayUnion(lecture_id),
   });

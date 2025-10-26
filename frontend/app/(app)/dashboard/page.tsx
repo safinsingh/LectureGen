@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { getBackendEndpoint } from "@/lib/env";
 
 interface Lecture {
   id: string;
@@ -199,7 +198,6 @@ export default function DashboardPage() {
   const router = useRouter();
   const [folders, setFolders] = useState<Folder[]>(mockFolders);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
-  const [createError, setCreateError] = useState<string | null>(null);
   const displayName =
     user?.displayName?.split(" ")[0] ??
     (user?.email ? user.email.split("@")[0] : "there");
@@ -235,44 +233,9 @@ export default function DashboardPage() {
     setFolders((prev) => updateFolders(prev));
   };
 
-  const handleCreateProject = async () => {
+  const handleCreateProject = () => {
     setIsCreatingProject(true);
-    setCreateError(null);
-    let backendEndpoint: string | null = null;
-    try {
-      backendEndpoint = getBackendEndpoint();
-    } catch (error) {
-      console.warn("Backend endpoint not configured; skipping project API.", error);
-    }
-
-    try {
-      if (backendEndpoint) {
-        const response = await fetch(`${backendEndpoint}create-project`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            // Add necessary payload
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to create project (${response.status})`);
-        }
-
-        const data = await response.json();
-        console.log("Project created:", data);
-      }
-    } catch (error) {
-      console.error("Error creating project:", error);
-      setCreateError(
-        "We couldn’t spin up your project. Please try again shortly.",
-      );
-    } finally {
-      setIsCreatingProject(false);
-      router.push("/lectures/new");
-    }
+    router.push("/lectures/new");
   };
 
   return (
@@ -289,7 +252,7 @@ export default function DashboardPage() {
           </p>
         </header>
 
-        <div className="mt-10 flex justify-center">
+        <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
           <button
             onClick={handleCreateProject}
             disabled={isCreatingProject}
@@ -319,11 +282,32 @@ export default function DashboardPage() {
               </>
             )}
           </button>
+          <Link
+            href="/settings"
+            className="inline-flex items-center gap-2 rounded-full border-2 border-slate-300 bg-white px-8 py-4 font-semibold text-slate-900 shadow-md transition hover:border-slate-400 hover:shadow-lg"
+          >
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+              />
+            </svg>
+            Settings
+          </Link>
         </div>
-        {createError ? (
-          <p className="mt-4 text-center text-sm text-red-600">{createError}</p>
-        ) : null}
-
         <section className="mt-14">
           <div className="text-center md:flex md:items-end md:justify-between md:text-left">
             <div>
