@@ -6,6 +6,7 @@ import {
 } from "./tts-websocket.js";
 import { LectureStore } from "../lib/lecture-store.js";
 import type { WebsocketHandler } from "@fastify/websocket";
+import { create_lecture_initial } from "./create_lecture.js";
 
 const createLectureAssetHandler = (
   _lectureStore: LectureStore,
@@ -33,6 +34,8 @@ export function registerRoutes(
 ): void {
   app.register(fastifyMultipart);
   // registerNewLectureRoute(app, lectureStore);
+
+  app.post("/api/create-lecture-initial", create_lecture_initial);
 
   app.route({
     method: "GET",

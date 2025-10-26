@@ -32,6 +32,9 @@ We let learners assemble their own lecture format by mixing content blocks (expl
 - `BACKEND_ENDPOINT`: Base URL for Fastify APIs (e.g. `https://api.lecturegen.dev/api/`). Client code reads this value (or `NEXT_PUBLIC_BACKEND_ENDPOINT`) to avoid hardcoding localhost addresses.
 
 ### API Surface (Current)
+- `POST /api/create-lecture-initial`  
+  - Multipart upload accepting `lecture_config`, `lecture_preferences`, and optional `files`.  
+  - Persists a lecture stub, caches uploaded files, and returns `{ success, lecture_id, questions[] }` with LLM-generated clarifying questions.
 - `GET /api/tts`  
   - HTTP: returns 426 (upgrade required).  
   - WebSocket: accepts a JSON payload `{ type?: "synthesize", text, voice?, language?, model? }` and responds with `tts.result` events from LiveKit’s TTS helper.
