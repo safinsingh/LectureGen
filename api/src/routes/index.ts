@@ -12,6 +12,8 @@ import {
   update_preferences_handler,
   create_profile_handler,
 } from "./user_profile.js";
+// added for S7 lecture gen 
+import { get_lecture_ws } from "./get_lecture.js";
 
 // HTTP handler for WebSocket-only lecture endpoint
 const createLectureHttpHandler = (): RouteHandler => {
@@ -29,6 +31,9 @@ const createLectureHttpHandler = (): RouteHandler => {
     });
   };
 };
+
+// createLectureStreamHandler replaced by get_lecture_ws from ./get_lecture.js
+// which fetches and sends complete Lecture data from Firebase
 
 export function registerRoutes(
   app: FastifyInstance,

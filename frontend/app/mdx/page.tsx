@@ -1,218 +1,179 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { Slide } from '@/components/slides/Slide';
-import type { PartialSlide } from 'schema';
+import { useSearchParams } from 'next/navigation';
+import { getBackendEndpoint } from '@/lib/env';
+import type { Lecture } from 'schema';
 
 export default function MDXTestPage() {
+  const searchParams = useSearchParams();
+  const lectureId = searchParams.get('id');
+
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [lecture, setLecture] = useState<Lecture | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Example slides demonstrating all features
-  const testSlides: PartialSlide[] = [
-    // Slide 1: Simple text slide with markdown formatting
-    {
-      title: '**Welcome** to LectureGen',
-      content: `# Introduction
+  // open websocket #2 connection to fetch lecture
+  useEffect(() => {
+    console.log('[WS2-Client] useEffect triggered', { lectureId });
 
-This is an automated lecture generation system that transforms your content into beautiful presentations.
+    if (!lectureId) {
+      console.warn('[WS2-Client] No lecture ID provided in URL');
+      setError('No lecture ID provided. Add ?id=your-lecture-id to the URL.');
+      setLoading(false);
+      return;
+    }
 
-## Key Features
+    let ws: WebSocket | null = null;
 
-- **Markdown-based content** - Write naturally
-- *Rich formatting* - Style your text
-- \`Code support\` - Show technical content
-- And much more!
+    const connectWebSocket = () => {
+      try {
+        const backendEndpoint = getBackendEndpoint();
+        console.log('[WS2-Client] Backend endpoint:', backendEndpoint);
 
-> "Education is the most powerful weapon which you can use to change the world." - Nelson Mandela`,
-    },
+        // convert HTTP endpoint to WebSocket endpoint
+        // backendEndpoint is already http://localhost:4000/api/
+        const wsEndpoint = backendEndpoint
+          .replace('http://', 'ws://')
+          .replace('https://', 'wss://')
+          .replace(/\/$/, ''); // Remove trailing slash
 
-    // Slide 2: Slide with headers that need downgrading
-    {
-      title: 'Header Demonstration',
-      content: `# This H1 becomes H2
+        // Don't add /api/ again since backendEndpoint already includes it
+        const wsUrl = `${wsEndpoint}/lecture?lecture_id=${lectureId}`;
 
-This slide demonstrates the automatic header downgrading feature.
+        console.log('[WS2-Client] Connecting to WebSocket:', {
+          originalEndpoint: backendEndpoint,
+          wsEndpoint,
+          fullUrl: wsUrl,
+          lectureId
+        });
 
-## This H2 stays H2
+        ws = new WebSocket(wsUrl);
 
-All H1 headers in the content are automatically converted to H2 to maintain proper hierarchy.
+        ws.onopen = () => {
+          console.log('[WS2-Client] WebSocket connection opened successfully', {
+            readyState: ws?.readyState,
+            url: wsUrl
+          });
+        };
 
-### This H3 stays H3
+        ws.onmessage = (event) => {
+          console.log('[WS2-Client] Message received from server', {
+            dataType: typeof event.data,
+            dataLength: event.data.length,
+            rawData: event.data.substring(0, 200) + '...' // First 200 chars
+          });
 
-Lower-level headers remain unchanged.`,
-    },
+          try {
+            const response = JSON.parse(event.data) as {
+              success: boolean;
+              lecture?: Lecture;
+              error?: string;
+            };
 
-    // Slide 3: Slide with bullet points and numbered lists
-    {
-      title: 'Lists and Formatting',
-      content: `# Types of Lists
+            console.log('[WS2-Client] Parsed response:', {
+              success: response.success,
+              hasLecture: !!response.lecture,
+              error: response.error,
+              slideCount: response.lecture?.slides?.length
+            });
 
-## Unordered Lists
+            if (!response.success) {
+              console.error('[WS2-Client] Server returned error:', response.error);
+              setError(response.error || 'Failed to fetch lecture');
+              setLoading(false);
+              return;
+            }
 
-- First item
-- Second item
-  - Nested item
-  - Another nested item
-- Third item
+            if (response.lecture) {
+              console.log('[WS2-Client] Lecture received successfully:', {
+                version: response.lecture.version,
+                slideCount: response.lecture.slides?.length,
+                permittedUsers: response.lecture.permitted_users,
+                slides: response.lecture.slides?.map((slide, idx) => ({
+                  index: idx,
+                  title: slide.title,
+                  hasContent: !!slide.content,
+                  hasDiagram: !!slide.diagram,
+                  hasImage: !!slide.image,
+                  hasVoiceover: !!slide.voiceover,
+                  hasQuestion: !!slide.question,
+                  contentLength: slide.content?.length || 0,
+                  transcriptLength: slide.transcript?.length || 0
+                }))
+              });
 
-## Ordered Lists
+              setLecture(response.lecture);
+              setLoading(false);
+              setError(null);
+              console.log('[WS2-Client] State updated - lecture set, loading complete');
+            } else {
+              console.warn('[WS2-Client] Success response but no lecture data');
+            }
+          } catch (err) {
+            console.error('[WS2-Client] Error parsing WebSocket message:', {
+              error: err,
+              message: err instanceof Error ? err.message : 'Unknown error',
+              stack: err instanceof Error ? err.stack : undefined,
+              rawData: event.data
+            });
+            setError('Failed to parse lecture data');
+            setLoading(false);
+          }
+        };
 
-1. First step
-2. Second step
-3. Third step
+        ws.onerror = (event) => {
+          console.error('[WS2-Client] WebSocket error occurred:', {
+            event,
+            readyState: ws?.readyState,
+            url: wsUrl,
+            type: event.type
+          });
+          setError('WebSocket connection error. Check console for details.');
+          setLoading(false);
+        };
 
-## Mixed Formatting
+        ws.onclose = (event) => {
+          console.log('[WS2-Client] WebSocket connection closed:', {
+            code: event.code,
+            reason: event.reason,
+            wasClean: event.wasClean,
+            url: wsUrl
+          });
+        };
+      } catch (err) {
+        console.error('[WS2-Client] Error setting up WebSocket:', {
+          error: err,
+          message: err instanceof Error ? err.message : 'Unknown error',
+          stack: err instanceof Error ? err.stack : undefined
+        });
+        setError(err instanceof Error ? err.message : 'Failed to connect to WebSocket');
+        setLoading(false);
+      }
+    };
 
-You can combine **bold**, *italic*, and \`code\` in your lists:
+    connectWebSocket();
 
-- **Important point** with emphasis
-- *Subtle note* in italics
-- Technical term: \`react-markdown\``,
-    },
+    // cleanup on unmount
+    return () => {
+      console.log('[WS2-Client] Cleaning up WebSocket connection');
+      if (ws) {
+        console.log('[WS2-Client] Closing WebSocket on unmount', {
+          readyState: ws.readyState
+        });
+        ws.close();
+      }
+    };
+  }, [lectureId]);
 
-    // Slide 4: Slide with an image
-    {
-      title: 'Visual Content',
-      content: `# Working with Images
-
-Images help convey complex ideas quickly and make presentations more engaging.
-
-## When to use images:
-
-1. Illustrating concepts
-2. Showing data visualizations
-3. Breaking up text-heavy slides
-4. Adding visual interest
-
-The image will appear below this content.`,
-      image: 'https://via.placeholder.com/800x400/4299e1/ffffff?text=Sample+Presentation+Image',
-    },
-
-    // Slide 5: Slide with a mermaid diagram
-    {
-      title: 'System Architecture',
-      content: `# Flow Diagram
-
-This slide demonstrates mermaid diagram support for visualizing system architecture.
-
-## Our Processing Pipeline
-
-The diagram below shows how data flows through the system:`,
-      diagram: `graph TD
-    A[User Input] --> B[Process Markdown]
-    B --> C{Has Image?}
-    C -->|Yes| D[Load Image]
-    C -->|No| E[Skip Image]
-    D --> F[Render Slide]
-    E --> F
-    F --> G[Display to User]`,
-    },
-
-    // Slide 6: Slide with both image and diagram
-    {
-      title: 'Complete Example',
-      content: `# Full-Featured Slide
-
-This slide demonstrates all features working together:
-
-- Markdown content with formatting
-- An embedded image
-- A mermaid diagram
-
-## Content Section
-
-You can have **bold text**, *italic text*, and even \`inline code\`.
-
-### Subsection
-
-More detailed information can go in subsections.`,
-      image: 'https://via.placeholder.com/600x250/48bb78/ffffff?text=Combined+Features',
-      diagram: `graph LR
-    A[Markdown] --> D[Slide]
-    B[Image] --> D
-    C[Diagram] --> D
-    D --> E[Beautiful Presentation]`,
-    },
-
-    // Slide 7: Code block example
-    {
-      title: 'Code Examples',
-      content: `# Displaying Code
-
-You can include code blocks in your slides:
-
-## TypeScript Example
-
-\`\`\`typescript
-interface PartialSlide {
-  title: string;
-  content?: string;
-  diagram?: string;
-  image?: string;
-}
-
-function renderSlide(slide: PartialSlide) {
-  console.log(\`Rendering: \${slide.title}\`);
-}
-\`\`\`
-
-## Python Example
-
-\`\`\`python
-def hello_world():
-    print("Hello from LectureGen!")
-    return True
-\`\`\`
-
-Inline code works too: \`const x = 5;\``,
-    },
-
-    // Slide 8: Complex mermaid diagram
-    {
-      title: 'Advanced Diagrams',
-      content: `# Sequence Diagram
-
-Mermaid supports various diagram types including sequence diagrams, class diagrams, and more.
-
-## User Interaction Flow
-
-Below is a sequence diagram showing the interaction between components:`,
-      diagram: `sequenceDiagram
-    participant User
-    participant Frontend
-    participant Backend
-    participant AI
-
-    User->>Frontend: Request Lecture
-    Frontend->>Backend: Send Topic
-    Backend->>AI: Generate Content
-    AI->>Backend: Return Slides
-    Backend->>Frontend: Send Slides
-    Frontend->>User: Display Presentation`,
-    },
-
-    // Slide 9: Title-only slide (minimal content)
-    {
-      title: 'Thank You!',
-      content: `# Questions?
-
-Feel free to explore the code and documentation.
-
-## Resources
-
-- Check out the README in \`frontend/mdx/README.md\`
-- View the component source in \`components/slides/Slide.tsx\`
-- Explore type definitions in \`types/index.d.ts\`
-
----
-
-**Built with LectureGen** 🎓`,
-    },
-  ];
-
-  // Keyboard navigation
+  // keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!lecture) return;
+
       if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
         nextSlide();
       } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
@@ -222,10 +183,10 @@ Feel free to explore the code and documentation.
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentSlide]);
+  }, [currentSlide, lecture]);
 
   const nextSlide = () => {
-    if (currentSlide < testSlides.length - 1) {
+    if (lecture && currentSlide < lecture.slides.length - 1) {
       setCurrentSlide(currentSlide + 1);
     }
   };
@@ -241,14 +202,58 @@ Feel free to explore the code and documentation.
   };
 
   const openPresentation = () => {
-    window.open('/present', '_blank', 'width=1200,height=800');
+    window.open(`/present?id=${lectureId}`, '_blank', 'width=1200,height=800');
   };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gray-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading lecture...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gray-100">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8">
+          <div className="text-center">
+            <div className="text-6xl mb-4">⚠️</div>
+            <h1 className="text-2xl font-bold text-red-600 mb-4">Error Loading Lecture</h1>
+            <p className="text-gray-700 mb-6">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // No lecture data
+  if (!lecture || !lecture.slides || lecture.slides.length === 0) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gray-100">
+        <div className="text-center">
+          <p className="text-gray-600">No lecture data available</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen flex flex-col bg-gray-100">
       {/* Slide Display - Takes remaining space */}
       <div className="flex-1 overflow-hidden relative">
-        <Slide lectureSlides={testSlides} i={currentSlide} />
+        <Slide lectureSlides={lecture.slides} i={currentSlide} />
 
         {/* Present Button - Floating */}
         <button
@@ -273,7 +278,7 @@ Feel free to explore the code and documentation.
 
           {/* Slide Indicators */}
           <div className="flex items-center gap-2">
-            {testSlides.map((_, index) => (
+            {lecture.slides.map((_, index) => (
               <button
                 key={index}
                 onClick={() => goToSlide(index)}
@@ -283,7 +288,7 @@ Feel free to explore the code and documentation.
                     : 'bg-gray-500 hover:bg-gray-400'
                 }`}
                 aria-label={`Go to slide ${index + 1}`}
-                title={testSlides[index].title}
+                title={lecture.slides[index].title}
               />
             ))}
           </div>
@@ -291,7 +296,7 @@ Feel free to explore the code and documentation.
           {/* Next Button */}
           <button
             onClick={nextSlide}
-            disabled={currentSlide === testSlides.length - 1}
+            disabled={currentSlide === lecture.slides.length - 1}
             className="px-6 py-2 bg-blue-600 rounded-lg hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors font-medium text-sm"
           >
             Next →
@@ -305,7 +310,7 @@ Feel free to explore the code and documentation.
             <kbd className="px-2 py-1 bg-gray-700 rounded">→</kbd> to navigate
           </div>
           <div className="font-medium">
-            Slide {currentSlide + 1} of {testSlides.length}
+            Slide {currentSlide + 1} of {lecture.slides.length}
           </div>
         </div>
       </div>
