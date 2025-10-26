@@ -11,7 +11,7 @@ import {
   GetLectureResponse,
   UserQuestionResponse,
   InboundMessage,
-} from "schema/zod_types";
+} from "../../../types/index.js";
 import { generate_user_question_response } from "../helpers/claude/questions";
 
 type SessionState =

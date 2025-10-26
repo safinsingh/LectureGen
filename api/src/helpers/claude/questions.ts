@@ -1,6 +1,6 @@
 import { lectureDoc } from "../../lib/firebase_admin";
 import { LLM } from "./llm";
-import { UserQuestionRequest, ZUserAnalyzeQuery } from "schema/zod_types";
+import { UserQuestionRequest, ZUserAnalyzeQuery } from "../../../../types/index.js";
 import { z } from "zod";
 import { ZGenerateTranscriptResponse } from "./transcript";
 import { ASSET_CACHE } from "../../lib/file_cache";

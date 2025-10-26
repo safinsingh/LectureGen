@@ -32,9 +32,76 @@ export const ZLecture = z.object({
   slides: z.array(ZLectureSlide),
 });
 
+export const ZGetLectureRequest = z.object({
+  type: z.literal("get_lecture_request"),
+  lecture_id: z.string(),
+});
+
+export const ZGetLectureResponse = z.object({
+  type: z.literal("get_lecture_response"),
+  lecture: ZLecture,
+});
+
+export const ZUserQuestionRequest = z.object({
+  type: z.literal("user_question_request"),
+  lecture_id: z.string(),
+  current_slide: z.number(),
+  question: z.string(),
+});
+
+export const ZUserAnalyzeQuery = z.discriminatedUnion("answer_category", [
+  z.object({
+    answer_category: z.literal("simple"),
+    response: z.string(),
+  }),
+  z.object({
+    answer_category: z.literal("regenerate_slides"),
+    response: z.string(),
+    instructions: z.string(),
+  }),
+]);
+
+export const ZUserQuestionResponse = z.object({
+  type: z.literal("user_question_response"),
+  response: ZUserAnalyzeQuery,
+});
+
+export const ZBackendQuestionRequest = z.object({
+  type: z.literal("backend_question_request"),
+  lecture_id: z.string(),
+  current_slide: z.number(),
+  question: z.string(),
+  answer: z.string(),
+});
+
+export const ZBackendQuestionResponse = z.object({
+  type: z.literal("backend_question_response"),
+  feedback: z.string(),
+});
+
+export const ZInboundMessage = z.union([
+  ZGetLectureRequest,
+  ZUserQuestionRequest,
+  ZBackendQuestionRequest,
+]);
+
+export const ZOutboundMessage = z.union([
+  ZGetLectureResponse,
+  ZUserQuestionResponse,
+  ZBackendQuestionResponse,
+]);
+
 // Inferred TypeScript types (optional)
 export type LectureSlide = z.infer<typeof ZLectureSlide>;
 export type Lecture = z.infer<typeof ZLecture>;
+export type GetLectureRequest = z.infer<typeof ZGetLectureRequest>;
+export type GetLectureResponse = z.infer<typeof ZGetLectureResponse>;
+export type UserQuestionRequest = z.infer<typeof ZUserQuestionRequest>;
+export type UserQuestionResponse = z.infer<typeof ZUserQuestionResponse>;
+export type BackendQuestionRequest = z.infer<typeof ZBackendQuestionRequest>;
+export type BackendQuestionResponse = z.infer<typeof ZBackendQuestionResponse>;
+export type InboundMessage = z.infer<typeof ZInboundMessage>;
+export type OutboundMessage = z.infer<typeof ZOutboundMessage>;
 export type PartialSlide = Omit<
   LectureSlide,
   "transcript" | "audio_transcription_link"
