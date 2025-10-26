@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -16,6 +16,7 @@ interface SlideProps {
 export function Slide({ lectureSlides, i }: SlideProps) {
   const mermaidRef = useRef<HTMLDivElement>(null);
   const slide = lectureSlides[i];
+  const [diagramFailed, setDiagramFailed] = useState(false);
 
   // Initialize mermaid on component mount
   useEffect(() => {
@@ -24,6 +25,9 @@ export function Slide({ lectureSlides, i }: SlideProps) {
 
   // Render mermaid diagram when slide changes
   useEffect(() => {
+    // Reset failure state when slide changes
+    setDiagramFailed(false);
+
     if (slide.diagram && mermaidRef.current) {
       // Clear previous diagram
       mermaidRef.current.innerHTML = '';
@@ -38,9 +42,8 @@ export function Slide({ lectureSlides, i }: SlideProps) {
         }
       }).catch((error) => {
         console.error('Mermaid rendering error:', error);
-        if (mermaidRef.current) {
-          mermaidRef.current.innerHTML = `<pre class="text-red-600 p-4 bg-red-50 rounded">${error.message}</pre>`;
-        }
+        // Hide the diagram if it fails to render
+        setDiagramFailed(true);
       });
     }
   }, [slide.diagram, i]);
@@ -174,8 +177,8 @@ export function Slide({ lectureSlides, i }: SlideProps) {
         </div>
       )}
 
-      {/* Mermaid Diagram (if exists) */}
-      {slide.diagram && (
+      {/* Mermaid Diagram (if exists and didn't fail to render) */}
+      {slide.diagram && !diagramFailed && (
         <div className="slide-diagram mt-8 mb-8">
           <div
             ref={mermaidRef}
