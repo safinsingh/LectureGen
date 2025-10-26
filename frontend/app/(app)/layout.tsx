@@ -38,6 +38,7 @@ export default function WorkspaceLayout({
 
       try {
         const token = await getIdToken();
+        console.log("[DEBUG] Checking user profile...");
         const response = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/api/users/profile`,
           {
@@ -47,12 +48,20 @@ export default function WorkspaceLayout({
           }
         );
 
+        console.log("[DEBUG] Profile check response status:", response.status);
+
         if (response.status === 404) {
           // Profile doesn't exist, show onboarding
+          console.log("[DEBUG] No profile found (404) - showing onboarding modal");
           setShowOnboarding(true);
+        } else if (response.ok) {
+          const profileData = await response.json();
+          console.log("[DEBUG] Profile found successfully:", profileData);
+        } else {
+          console.log("[DEBUG] Unexpected response status:", response.status);
         }
       } catch (error) {
-        console.error("Error checking profile:", error);
+        console.error("[DEBUG] Error checking profile:", error);
       } finally {
         setCheckingProfile(false);
       }
@@ -64,11 +73,19 @@ export default function WorkspaceLayout({
   }, [user, loading, getIdToken]);
 
   const handleOnboardingComplete = async (preferences: LecturePreferences) => {
-    if (!user) return;
+    if (!user) {
+      console.error("[DEBUG] No user found - cannot create profile");
+      return;
+    }
 
     try {
       const token = await getIdToken();
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/profile`, {
+      console.log("[DEBUG] Creating profile with preferences:", preferences);
+      console.log("[DEBUG] User email:", user.email);
+      console.log("[DEBUG] User displayName:", user.displayName);
+      console.log("[DEBUG] API URL:", process.env.NEXT_PUBLIC_API_URL);
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/profile`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -81,9 +98,24 @@ export default function WorkspaceLayout({
         }),
       });
 
-      setShowOnboarding(false);
+      console.log("[DEBUG] Profile creation response status:", response.status);
+
+      if (response.ok) {
+        const responseData = await response.json();
+        console.log("[DEBUG] Profile created successfully:", responseData);
+        setShowOnboarding(false);
+      } else {
+        const errorText = await response.text();
+        console.error("[DEBUG] Failed to create profile:", response.status, errorText);
+        // Close modal anyway to prevent it from being stuck
+        alert(`Failed to save profile: ${errorText}. Please try again from settings.`);
+        setShowOnboarding(false);
+      }
     } catch (error) {
-      console.error("Error creating profile:", error);
+      console.error("[DEBUG] Error creating profile:", error);
+      // Close modal anyway to prevent it from being stuck
+      alert("An error occurred while saving your profile. Please try again from settings.");
+      setShowOnboarding(false);
     }
   };
 
@@ -92,8 +124,9 @@ export default function WorkspaceLayout({
 
     try {
       const token = await getIdToken();
+      console.log("[DEBUG] Skipping onboarding - creating profile with defaults");
       // Create profile with defaults
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/profile`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/profile`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -110,9 +143,18 @@ export default function WorkspaceLayout({
         }),
       });
 
-      setShowOnboarding(false);
+      console.log("[DEBUG] Skip profile creation response status:", response.status);
+
+      if (response.ok) {
+        const responseData = await response.json();
+        console.log("[DEBUG] Profile created successfully (skip):", responseData);
+        setShowOnboarding(false);
+      } else {
+        const errorText = await response.text();
+        console.error("[DEBUG] Failed to create profile (skip):", response.status, errorText);
+      }
     } catch (error) {
-      console.error("Error creating profile:", error);
+      console.error("[DEBUG] Error creating profile (skip):", error);
     }
   };
 
